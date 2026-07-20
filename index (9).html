@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Inventario CEWRI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+:root{
+  --bg: #F4F7FB;
+  --surface: #FFFFFF;
+  --surface-2: #EAF1F8;
+  --border: #CBD9E8;
+  --accent: #0B5CAB;
+  --accent-dim: #D9E8F7;
+  --text: #14273B;
+  --text-muted: #5C7288;
+  --ok: #1E7A46;
+  --ok-bg: #E4F3EA;
+  --warn: #C2452D;
+  --warn-bg: #FBEAE5;
+  --radius: 10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);}
+body{
+  font-family:'IBM Plex Sans', system-ui, sans-serif;
+  -webkit-tap-highlight-color:transparent;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+.mono{font-family:'IBM Plex Mono', monospace;}
+h1,h2,h3{font-family:'Space Grotesk', sans-serif; margin:0;}
+
+/* header */
+.topbar{
+  padding:14px 16px 10px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+  position:sticky; top:0; z-index:20;
+}
+.topbar-row{display:flex; align-items:center; justify-content:space-between;}
+.brand{display:flex; align-items:center; gap:10px;}
+.brand-mark{
+  width:30px;height:30px;border-radius:7px;
+  background:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  color:#FFFFFF; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px;
+}
+.brand h1{font-size:16px; letter-spacing:0.2px;}
+.brand span{display:block; font-size:10.5px; color:var(--text-muted); font-family:'IBM Plex Mono',monospace; letter-spacing:0.5px;}
+.alert-pill{
+  display:flex; align-items:center; gap:6px;
+  background:var(--warn-bg); color:var(--warn);
+  border:1px solid #EBC2B6;
+  padding:5px 10px; border-radius:999px;
+  font-size:12px; font-weight:600; font-family:'IBM Plex Mono',monospace;
+}
+.alert-pill.ok{background:var(--ok-bg); color:var(--ok); border-color:#BBDCC8;}
+.alert-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+/* tabs */
+.tabs{display:flex; gap:2px; margin-top:12px; overflow-x:auto; scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{
+  flex:0 0 auto;
+  padding:8px 13px;
+  font-size:12.5px; font-weight:600;
+  color:var(--text-muted);
+  background:transparent;
+  border:none; border-bottom:2px solid transparent;
+  cursor:pointer;
+  font-family:'IBM Plex Sans',sans-serif;
+  white-space:nowrap;
+}
+.tab.active{color:var(--accent); border-bottom-color:var(--accent);}
+
+main{flex:1; padding:16px; max-width:720px; margin:0 auto; width:100%; padding-bottom:100px;}
+.view{display:none;}
+.view.active{display:block; animation:fade .18s ease;}
+@keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+/* cards */
+.stats-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:18px;}
+.stat-card{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:12px 10px;
+}
+.stat-card .num{font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:700;}
+.stat-card .label{font-size:10.5px; color:var(--text-muted); margin-top:2px; line-height:1.3;}
+.stat-card.warn .num{color:var(--warn);}
+.stat-card.ok .num{color:var(--ok);}
+
+.section-title{
+  font-size:11px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--text-muted); margin:22px 0 10px; font-family:'IBM Plex Mono',monospace;
+}
+.section-title:first-child{margin-top:0;}
+
+/* low stock list */
+.item-row{
+  display:flex; align-items:center; gap:10px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:11px 12px; margin-bottom:7px;
+  cursor:pointer;
+}
+.item-row:active{background:var(--surface-2);}
+.item-code{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-muted);
+  background:var(--surface-2); padding:3px 6px; border-radius:5px; flex:0 0 auto;
+}
+.item-info{flex:1; min-width:0;}
+.item-info .desc{font-size:13.5px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.item-info .cat{font-size:11px; color:var(--text-muted); margin-top:1px;}
+.item-stock{text-align:right; flex:0 0 auto;}
+.item-stock .qty{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:15px;}
+.item-stock .qty.low{color:var(--warn);}
+.item-stock .unit{font-size:10px; color:var(--text-muted);}
+
+.empty-note{
+  text-align:center; padding:30px 20px; color:var(--text-muted); font-size:13px;
+  background:var(--surface); border:1px dashed var(--border); border-radius:var(--radius);
+}
+
+/* buttons */
+.btn{
+  border:none; border-radius:var(--radius); padding:11px 16px;
+  font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:13.5px;
+  cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px;
+}
+.btn-primary{background:var(--accent); color:#FFFFFF;}
+.btn-primary:active{background:#094A8A;}
+.btn-secondary{background:var(--surface-2); color:var(--text); border:1px solid var(--border);}
+.btn-danger{background:var(--warn-bg); color:var(--warn); border:1px solid #EBC2B6;}
+.btn-ok{background:var(--ok-bg); color:var(--ok); border:1px solid #BBDCC8;}
+.btn-block{width:100%;}
+.btn:disabled{opacity:0.4; cursor:not-allowed;}
+
+/* scan view */
+.scan-cta{
+  background:var(--surface); border:1px solid var(--border); border-radius:14px;
+  padding:22px; text-align:center; margin-bottom:16px;
+}
+.scan-cta .ring{
+  width:64px;height:64px;border-radius:50%;
+  background:var(--surface-2); border:2px solid var(--accent);
+  display:flex;align-items:center;justify-content:center; margin:0 auto 14px;
+}
+.viewfinder-wrap{position:relative; border-radius:14px; overflow:hidden; background:#000; margin-bottom:14px;}
+.viewfinder-wrap video{width:100%; display:block; max-height:340px; object-fit:cover;}
+.reticle{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  pointer-events:none;
+}
+.reticle-box{width:62%; aspect-ratio:1; position:relative;}
+.reticle-box span{position:absolute; width:26px; height:26px; border-color:var(--accent); border-style:solid;}
+.reticle-box span.tl{top:0;left:0;border-width:3px 0 0 3px; border-top-left-radius:6px;}
+.reticle-box span.tr{top:0;right:0;border-width:3px 3px 0 0; border-top-right-radius:6px;}
+.reticle-box span.bl{bottom:0;left:0;border-width:0 0 3px 3px; border-bottom-left-radius:6px;}
+.reticle-box span.br{bottom:0;right:0;border-width:0 3px 3px 0; border-bottom-right-radius:6px;}
+.scan-status{
+  position:absolute; bottom:10px; left:10px; right:10px;
+  background:rgba(255,255,255,0.92); border:1px solid var(--border); border-radius:8px; padding:8px 10px;
+  font-size:11.5px; color:var(--text-muted); text-align:center; font-family:'IBM Plex Mono',monospace;
+}
+
+.manual-search{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:14px;
+}
+input[type=text], input[type=number]{
+  width:100%; background:var(--surface-2); border:1px solid var(--border);
+  color:var(--text); border-radius:8px; padding:10px 12px; font-size:14px;
+  font-family:'IBM Plex Sans',sans-serif;
+}
+input:focus{outline:none; border-color:var(--accent);}
+
+.chip-row{display:flex; gap:6px; flex-wrap:wrap; margin:10px 0;}
+.chip{
+  padding:6px 11px; border-radius:999px; font-size:11.5px; font-weight:600;
+  background:var(--surface-2); color:var(--text-muted); border:1px solid var(--border); cursor:pointer;
+}
+.chip.active{background:var(--accent-dim); color:var(--accent); border-color:var(--accent);}
+
+/* modal */
+.overlay{
+  position:fixed; inset:0; background:rgba(20,39,59,0.45);
+  display:none; align-items:flex-end; justify-content:center; z-index:100;
+}
+.overlay.show{display:flex;}
+.modal{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:16px 16px 0 0; padding:20px; width:100%; max-width:520px;
+  animation:slideup .22s ease;
+}
+@media(min-width:560px){
+  .overlay{align-items:center;}
+  .modal{border-radius:16px;}
+}
+@keyframes slideup{from{transform:translateY(30px); opacity:0;} to{transform:translateY(0); opacity:1;}}
+.modal-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;}
+.modal-head .x{background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; line-height:1;}
+.modal-item-code{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--accent);}
+.modal-item-desc{font-size:16px; font-weight:600; margin:2px 0 2px; font-family:'Space Grotesk',sans-serif;}
+.modal-item-meta{font-size:12px; color:var(--text-muted); margin-bottom:16px;}
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:11.5px; color:var(--text-muted); margin-bottom:5px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px;}
+.action-toggle{display:flex; gap:8px; margin-bottom:14px;}
+.action-toggle button{
+  flex:1; padding:11px; border-radius:9px; border:1px solid var(--border);
+  background:var(--surface-2); color:var(--text-muted); font-weight:600; font-size:13px; cursor:pointer;
+}
+.action-toggle button.sel-entrada.on{background:var(--ok-bg); border-color:#BBDCC8; color:var(--ok);}
+.action-toggle button.sel-salida.on{background:var(--warn-bg); border-color:#EBC2B6; color:var(--warn);}
+.qty-stepper{display:flex; align-items:center; gap:10px;}
+.qty-stepper button{
+  width:42px; height:42px; border-radius:9px; border:1px solid var(--border);
+  background:var(--surface-2); color:var(--text); font-size:18px; font-weight:600; cursor:pointer;
+}
+.qty-stepper input{text-align:center; font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:600;}
+.modal-actions{display:flex; gap:8px; margin-top:18px;}
+.hint{font-size:11.5px; color:var(--text-muted); margin-top:6px; line-height:1.4;}
+
+/* catalog list */
+.search-bar{margin-bottom:12px;}
+.cat-row-wrap{max-height:none;}
+
+/* labels grid */
+.label-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+@media(min-width:480px){.label-grid{grid-template-columns:1fr 1fr 1fr;}}
+.label-card{
+  background:#fff; color:#111; border-radius:8px; padding:10px; text-align:center;
+  border:1px solid #ddd;
+}
+.label-card .qr-box{display:flex; justify-content:center; margin-bottom:6px;}
+.label-card .lbl-code{font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700;}
+.label-card .lbl-desc{font-size:9.5px; line-height:1.25; margin-top:2px; max-height:2.6em; overflow:hidden;}
+
+/* bottom nav (mobile) */
+.bottom-nav{
+  position:fixed; bottom:0; left:0; right:0; z-index:30;
+  background:var(--surface); border-top:1px solid var(--border);
+  display:flex; padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+}
+.bottom-nav button{
+  flex:1; background:none; border:none; color:var(--text-muted);
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:6px 2px; cursor:pointer; font-size:10px; font-family:'IBM Plex Sans',sans-serif; font-weight:500;
+}
+.bottom-nav button.active{color:var(--accent);}
+.bottom-nav svg{width:20px; height:20px;}
+
+.toast{
+  position:fixed; bottom:82px; left:50%; transform:translateX(-50%) translateY(10px);
+  background:var(--ok-bg); color:var(--ok); border:1px solid #BBDCC8;
+  padding:10px 18px; border-radius:999px; font-size:13px; font-weight:600;
+  opacity:0; pointer-events:none; transition:all .25s ease; z-index:200;
+  white-space:nowrap;
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+.movement-row{
+  display:flex; align-items:center; gap:10px; padding:10px 0;
+  border-bottom:1px solid var(--border);
+}
+.movement-row:last-child{border-bottom:none;}
+.mv-badge{
+  width:34px; height:34px; border-radius:8px; flex:0 0 auto;
+  display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700;
+}
+.mv-badge.entrada{background:var(--ok-bg); color:var(--ok);}
+.mv-badge.salida{background:var(--warn-bg); color:var(--warn);}
+.mv-info{flex:1; min-width:0;}
+.mv-info .desc{font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.mv-info .meta{font-size:11px; color:var(--text-muted); font-family:'IBM Plex Mono',monospace;}
+.mv-qty{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:13px; flex:0 0 auto;}
+
+.print-only{display:none;}
+@media print{
+  .topbar,.bottom-nav,.tabs{display:none !important;}
+  main{padding:0; max-width:none;}
+  body{background:#fff;}
+}
+.threshold-note{
+  background:var(--surface); border:1px dashed var(--border); border-radius:var(--radius);
+  padding:12px 14px; font-size:12px; color:var(--text-muted); margin-bottom:16px; line-height:1.5;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-row">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <h1>Inventario CEWRI</h1>
+        <span>AIREKO ENERGY GROUP</span>
+        <span style="letter-spacing:0.2px;">Mario González · Assistant Project Manager</span>
+      </div>
+    </div>
+    <div id="alertPill" class="alert-pill ok"><span class="alert-dot"></span><span id="alertPillText">0 bajos</span></div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-tab="resumen">Resumen</button>
+    <button class="tab" data-tab="escanear">Escanear</button>
+    <button class="tab" data-tab="catalogo">Catálogo</button>
+    <button class="tab" data-tab="movimientos">Movimientos</button>
+    <button class="tab" data-tab="etiquetas">Etiquetas</button>
+  </div>
+</div>
+
+<main>
+
+  <!-- RESUMEN -->
+  <section class="view active" id="view-resumen">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="num" id="statTotal">0</div><div class="label">Materiales en catálogo</div></div>
+      <div class="stat-card warn"><div class="num" id="statLow">0</div><div class="label">Bajo el mínimo</div></div>
+      <div class="stat-card ok"><div class="num" id="statToday">0</div><div class="label">Movimientos hoy</div></div>
+    </div>
+
+    <div class="threshold-note" id="zeroDataNote">
+      Este prototipo arranca en cero — el stock y los mínimos no tienen datos reales todavía. Ve a <b>Catálogo</b> y toca un material para ingresar tu cantidad actual y su mínimo, o usa <b>Escanear</b> una vez imprimas las etiquetas QR.
+    </div>
+
+    <div class="section-title">Materiales bajo el mínimo</div>
+    <div id="lowStockList"></div>
+
+    <div class="section-title">Últimos movimientos</div>
+    <div id="recentMoves"></div>
+  </section>
+
+  <!-- ESCANEAR -->
+  <section class="view" id="view-escanear">
+    <div class="manual-search" style="margin-bottom:16px; border-color:var(--accent-dim);">
+      <div style="font-weight:600; font-size:13.5px; margin-bottom:2px;">⚡ Captura rápida</div>
+      <div class="hint" style="margin-top:0; margin-bottom:10px;">Teclea el número de la etiqueta (ej. 45) o parte del nombre de la pieza (ej. bushing 1), o usa una pistola escáner. Enter o "Ir" abre el registro.</div>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="quickNum" placeholder="N° de ítem o escaneo" inputmode="numeric" autocomplete="off" style="flex:1; font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:600; text-align:center;">
+        <button class="btn btn-primary" id="btnQuickGo">Ir</button>
+      </div>
+      <div id="quickPreview" class="hint" style="min-height:16px;"></div>
+    </div>
+
+    <div id="scanCtaBox" class="scan-cta">
+      <div class="ring">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F0A828" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20v.01"/></svg>
+      </div>
+      <div style="font-weight:600; margin-bottom:4px;">Escanear código QR</div>
+      <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">Apunta la cámara a la etiqueta del material</div>
+      <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+        <button class="btn btn-primary" id="btnPhotoScan">📷 Tomar foto del código</button>
+        <button class="btn btn-secondary" id="btnStartScan">Cámara en vivo (si tu navegador lo permite)</button>
+      </div>
+      <div class="hint" style="margin-top:12px; text-align:left;">Si la cámara en vivo no funciona (común dentro de la app de Claude), usa "Tomar foto": se abre la cámara del teléfono, le tomas foto al QR y la app lo lee de la imagen.</div>
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none;">
+    </div>
+
+    <div id="viewfinderWrap" class="viewfinder-wrap" style="display:none;">
+      <video id="video" playsinline muted></video>
+      <div class="reticle"><div class="reticle-box"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div></div>
+      <div class="scan-status" id="scanStatus">Buscando código…</div>
+    </div>
+    <button class="btn btn-secondary btn-block" id="btnStopScan" style="display:none; margin-bottom:16px;">Detener cámara</button>
+
+    <div class="section-title">O busca manualmente</div>
+    <div class="manual-search">
+      <input type="text" id="manualSearch" placeholder="Buscar por nombre o número de ítem…">
+      <div id="manualResults" style="margin-top:10px;"></div>
+    </div>
+  </section>
+
+  <!-- CATALOGO -->
+  <section class="view" id="view-catalogo">
+    <div class="threshold-note">
+      <b>Cargar mínimos de inventario.</b> Pega la lista acordada (una pieza por línea: <span class="mono">número, mínimo</span> — por ejemplo <span class="mono">45, 20</span>) o sube un archivo CSV con esas dos columnas. Los mínimos se aplican de una vez a todo el catálogo y se suben a la base de datos.
+      <textarea id="minimosPaste" placeholder="45, 20&#10;69, 10&#10;124, 6" style="width:100%; min-height:90px; margin-top:10px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px 12px; font-family:'IBM Plex Mono',monospace; font-size:13px; resize:vertical;"></textarea>
+      <div style="margin-top:8px; display:flex; gap:8px;">
+        <button class="btn btn-primary" id="btnAplicarMinimos">Aplicar mínimos</button>
+        <button class="btn btn-secondary" id="btnMinimosCsv">Subir CSV</button>
+      </div>
+      <input type="file" id="minimosFile" accept=".csv,text/csv,text/plain" style="display:none;">
+      <div class="hint" id="minimosResultado"></div>
+    </div>
+    <div class="search-bar">
+      <input type="text" id="catSearch" placeholder="Buscar material…">
+    </div>
+    <div class="chip-row" id="catChips"></div>
+    <div id="catalogList"></div>
+  </section>
+
+  <!-- MOVIMIENTOS -->
+  <section class="view" id="view-movimientos">
+    <div class="threshold-note">
+      <b>Base de datos compartida.</b> Pega la URL de tu Apps Script (termina en <span class="mono">/exec</span>) y la clave de acceso que definiste en el código del servidor.
+      <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+        <input type="text" id="backendUrlInput" placeholder="https://script.google.com/macros/s/…/exec">
+        <div style="display:flex; gap:8px;">
+          <input type="password" id="backendKeyInput" placeholder="Clave de acceso" autocomplete="off" style="flex:1;">
+          <button class="btn btn-primary" id="btnConnectBackend">Conectar</button>
+        </div>
+      </div>
+      <div class="hint" id="syncStatus">Sin base de datos — modo local (los datos viven solo en este dispositivo).</div>
+    </div>
+    <div class="threshold-note">
+      <b>Respaldo de datos.</b> Exporta un archivo con todo tu inventario y movimientos. Si algún día la página abre vacía, importas el respaldo y recuperas todo en segundos. Recomendado: exporta al final de cada día de trabajo.
+      <div style="margin-top:10px; display:flex; gap:8px;">
+        <button class="btn btn-primary" id="btnExport">⬇ Exportar respaldo</button>
+        <button class="btn btn-secondary" id="btnImport">⬆ Importar respaldo</button>
+      </div>
+      <input type="file" id="importFile" accept=".json,application/json" style="display:none;">
+    </div>
+    <div class="section-title">Historial completo</div>
+    <div id="allMoves"></div>
+  </section>
+
+  <!-- ETIQUETAS -->
+  <section class="view" id="view-etiquetas">
+    <div class="threshold-note">
+      Genera e imprime etiquetas QR para pegar en cada material o contenedor del almacén.
+      <div style="margin-top:12px;">
+        <label style="display:block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted); margin-bottom:5px;">Dirección web de la app (opcional)</label>
+        <input type="text" id="baseUrlInput" placeholder="https://tu-sitio.github.io/inventario">
+        <div class="hint">Si publicas esta app en una dirección web y la escribes aquí, los QR se generan como <b>enlaces</b> — al escanearlos con la cámara normal del celular, se abre la app directo en ese material. Si lo dejas vacío, los QR llevan solo el nombre de la pieza y tendrás que usar la captura rápida.</div>
+        <label style="display:flex; align-items:flex-start; gap:8px; margin-top:10px; font-size:12px; color:var(--text); cursor:pointer;">
+          <input type="checkbox" id="includeDbInQr" style="width:auto; margin-top:2px;">
+          <span>Incluir la dirección de la base en el enlace (la <b>clave nunca viaja en el QR</b>). En un celular o navegador nuevo, la app se configura sola desde la etiqueta y solo pedirá la clave una vez.</span>
+        </label>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:8px;">
+        <button class="btn btn-primary" id="btnRegenLabels">Generar etiquetas</button>
+        <button class="btn btn-secondary" onclick="window.print()">Imprimir</button>
+      </div>
+    </div>
+    <div class="chip-row" id="labelChips"></div>
+    <div class="label-grid" id="labelGrid"></div>
+  </section>
+
+</main>
+
+<div class="bottom-nav">
+  <button class="nav-btn active" data-tab="resumen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+    Resumen
+  </button>
+  <button class="nav-btn" data-tab="escanear">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><rect x="9" y="9" width="6" height="6"/></svg>
+    Escanear
+  </button>
+  <button class="nav-btn" data-tab="catalogo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+    Catálogo
+  </button>
+  <button class="nav-btn" data-tab="movimientos">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+    Movim.
+  </button>
+  <button class="nav-btn" data-tab="etiquetas">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 4.5v9L12 20l-9-4.5v-9z"/><path d="M12 22V12M21 6.5L12 12 3 6.5"/></svg>
+    Etiquetas
+  </button>
+</div>
+
+<div class="overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-item-code" id="mCode">CEWRI-000</div>
+        <div class="modal-item-desc" id="mDesc">—</div>
+        <div class="modal-item-meta" id="mMeta">—</div>
+      </div>
+      <button class="x" id="mClose">✕</button>
+    </div>
+
+    <div class="action-toggle">
+      <button class="sel-entrada" id="btnEntrada">↓ Entrada</button>
+      <button class="sel-salida" id="btnSalida">↑ Salida</button>
+    </div>
+
+    <div class="field">
+      <label>Cantidad</label>
+      <div class="qty-stepper">
+        <button id="qtyMinus">−</button>
+        <input type="number" id="qtyInput" value="1" min="1">
+        <span class="mono" id="qtyUnit" style="color:var(--text-muted); font-size:12px;">ea</span>
+        <button id="qtyPlus">+</button>
+      </div>
+    </div>
+
+    <div class="field" id="casoField" style="display:none;">
+      <label>Número de caso (PR-CI)</label>
+      <input type="text" id="casoInput" placeholder="PR-CI-XXXXX">
+    </div>
+
+    <div class="field" id="personaField" style="display:none;">
+      <label>¿Quién se lleva el material?</label>
+      <input type="text" id="personaInput" placeholder="Nombre del técnico o cuadrilla" autocomplete="off">
+      <div class="chip-row" id="personaChips" style="margin:8px 0 0;"></div>
+    </div>
+
+    <div class="field">
+      <label>Stock actual: <span id="mStockNow" class="mono">0</span> · Mínimo: <span id="mThreshNow" class="mono">sin definir</span></label>
+      <div style="display:flex; gap:8px;">
+        <input type="number" id="threshInput" placeholder="Definir mínimo de reabasto" min="0">
+        <button class="btn btn-secondary" id="btnSetThresh">Guardar</button>
+      </div>
+      <div class="hint">Ajusta el mínimo real de este material — el prototipo no trae mínimos precargados.</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="mCancel" style="flex:1;">Cancelar</button>
+      <button class="btn btn-primary" id="mConfirm" style="flex:2;">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script id="catalog-data" type="application/json">[{"category":"PVC Sch 40","item_no":1,"description":"PVC Male Adapter 1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":2,"description":"PVC Male Adapter 3/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":3,"description":"PVC Male Adapter 1\"","unit":"ea"},{"category":"PVC Sch 40","item_no":4,"description":"PVC Male Adapter 1-1/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":5,"description":"PVC Male Adapter 1-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":6,"description":"PVC Male Adapter 2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":7,"description":"PVC Male Adapter 2-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":8,"description":"Steel Locknut 1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":9,"description":"Steel Locknut 3/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":10,"description":"Steel Locknut 1\"","unit":"ea"},{"category":"PVC Sch 40","item_no":11,"description":"Steel Locknut 1-1/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":12,"description":"Steel Locknut 1-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":13,"description":"Steel Locknut 2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":14,"description":"Steel Locknut 2-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":15,"description":"Hub Connector 1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":16,"description":"Hub Connector 3/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":17,"description":"Hub Connector 1\"","unit":"ea"},{"category":"PVC Sch 40","item_no":18,"description":"Hub Connector 1-1/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":19,"description":"Hub Connector 1-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":20,"description":"Hub Connector 2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":21,"description":"Hub Connector 2-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":22,"description":"PVC Female Adapter 1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":23,"description":"PVC Female Adapter 3/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":24,"description":"PVC Female Adapter 1\"","unit":"ea"},{"category":"PVC Sch 40","item_no":25,"description":"PVC Female Adapter 1-1/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":26,"description":"PVC Female Adapter 1-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":27,"description":"PVC Female Adapter 2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":28,"description":"PVC Female Adapter 2-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":29,"description":"PVC Elbow 1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":30,"description":"PVC Elbow 3/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":31,"description":"PVC Elbow 1\"","unit":"ea"},{"category":"PVC Sch 40","item_no":32,"description":"PVC Elbow 1-1/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":33,"description":"PVC Elbow 1-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":34,"description":"PVC Elbow 2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":35,"description":"PVC Elbow 2-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":36,"description":"PVC Coupling 1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":37,"description":"PVC Coupling 3/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":38,"description":"PVC Coupling 1\"","unit":"ea"},{"category":"PVC Sch 40","item_no":39,"description":"PVC Coupling 1-1/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":40,"description":"PVC Coupling 1-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":41,"description":"PVC Coupling 2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":42,"description":"PVC Coupling 2-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":43,"description":"PVC Bushing 1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":44,"description":"PVC Bushing 3/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":45,"description":"PVC Bushing 1\"","unit":"ea"},{"category":"PVC Sch 40","item_no":46,"description":"PVC Bushing 1-1/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":47,"description":"PVC Bushing 1-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":48,"description":"PVC Bushing 2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":49,"description":"PVC Bushing 2-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":50,"description":"PVC Conduit 1/2\"","unit":"lf"},{"category":"PVC Sch 40","item_no":51,"description":"PVC Conduit 3/4\"","unit":"lf"},{"category":"PVC Sch 40","item_no":52,"description":"PVC Conduit 1\"","unit":"lf"},{"category":"PVC Sch 40","item_no":53,"description":"PVC Conduit 1-1/4\"","unit":"lf"},{"category":"PVC Sch 40","item_no":54,"description":"PVC Conduit 1-1/2\"","unit":"lf"},{"category":"PVC Sch 40","item_no":55,"description":"PVC Conduit 2\"","unit":"lf"},{"category":"PVC Sch 40","item_no":56,"description":"PVC Conduit 2-1/2\"","unit":"lf"},{"category":"EMT","item_no":57,"description":"EMT Screw Connector 1/2\"","unit":"ea"},{"category":"EMT","item_no":58,"description":"EMT Screw Connector 3/4\"","unit":"ea"},{"category":"EMT","item_no":59,"description":"EMT Screw Connector 1\"","unit":"ea"},{"category":"EMT","item_no":60,"description":"EMT Screw Connector 1-1/4\"","unit":"ea"},{"category":"EMT","item_no":61,"description":"EMT Screw Connector 1-1/2\"","unit":"ea"},{"category":"EMT","item_no":62,"description":"EMT Screw Connector 2\"","unit":"ea"},{"category":"EMT","item_no":63,"description":"EMT Screw Connector 2-1/2\"","unit":"ea"},{"category":"EMT","item_no":64,"description":"EMT Elbow 1/2\"","unit":"ea"},{"category":"EMT","item_no":65,"description":"EMT Elbow 3/4\"","unit":"ea"},{"category":"EMT","item_no":66,"description":"EMT Elbow 1\"","unit":"ea"},{"category":"EMT","item_no":67,"description":"EMT Elbow 1-1/4\"","unit":"ea"},{"category":"EMT","item_no":68,"description":"EMT Elbow 1-1/2\"","unit":"ea"},{"category":"EMT","item_no":69,"description":"EMT Elbow 2\"","unit":"ea"},{"category":"EMT","item_no":70,"description":"EMT Elbow 2-1/2\"","unit":"ea"},{"category":"EMT","item_no":71,"description":"EMT Coupling 1/2\"","unit":"ea"},{"category":"EMT","item_no":72,"description":"EMT Coupling 3/4\"","unit":"ea"},{"category":"EMT","item_no":73,"description":"EMT Coupling 1\"","unit":"ea"},{"category":"EMT","item_no":74,"description":"EMT Coupling 1-1/4\"","unit":"ea"},{"category":"EMT","item_no":75,"description":"EMT Coupling 1-1/2\"","unit":"ea"},{"category":"EMT","item_no":76,"description":"EMT Coupling 2\"","unit":"ea"},{"category":"EMT","item_no":77,"description":"EMT Coupling 2-1/2\"","unit":"ea"},{"category":"EMT","item_no":78,"description":"EMT Conduit 1/2\"","unit":"lf"},{"category":"EMT","item_no":79,"description":"EMT Conduit 3/4\"","unit":"lf"},{"category":"EMT","item_no":80,"description":"EMT Conduit 1\"","unit":"lf"},{"category":"EMT","item_no":81,"description":"EMT Conduit 1-1/4\"","unit":"lf"},{"category":"EMT","item_no":82,"description":"EMT Conduit 1-1/2\"","unit":"lf"},{"category":"EMT","item_no":83,"description":"EMT Conduit 2\"","unit":"lf"},{"category":"EMT","item_no":84,"description":"EMT Conduit 2-1/2\"","unit":"lf"},{"category":"Sealtight","item_no":85,"description":"Sealtight Connector Right 1/2\"","unit":"ea"},{"category":"Sealtight","item_no":86,"description":"Sealtight Connector Right 3/4\"","unit":"ea"},{"category":"Sealtight","item_no":87,"description":"Sealtight Connector Right 1\"","unit":"ea"},{"category":"Sealtight","item_no":88,"description":"Sealtight Connector Right 1-1/4\"","unit":"ea"},{"category":"Sealtight","item_no":89,"description":"Sealtight Connector Right 1-1/2\"","unit":"ea"},{"category":"Sealtight","item_no":90,"description":"Sealtight Connector Right 2\"","unit":"ea"},{"category":"Sealtight","item_no":91,"description":"Sealtight Connector Right 2-1/2\"","unit":"ea"},{"category":"Sealtight","item_no":92,"description":"Sealtight Connector 90 deg 1/2\"","unit":"ea"},{"category":"Sealtight","item_no":93,"description":"Sealtight Connector 90 deg 3/4\"","unit":"ea"},{"category":"Sealtight","item_no":94,"description":"Sealtight Connector 90 deg 1\"","unit":"ea"},{"category":"Sealtight","item_no":95,"description":"Sealtight Connector 90 deg 1-1/4\"","unit":"ea"},{"category":"Sealtight","item_no":96,"description":"Sealtight Connector 90 deg 1-1/2\"","unit":"ea"},{"category":"Sealtight","item_no":97,"description":"Sealtight Connector 90 deg 2\"","unit":"ea"},{"category":"Sealtight","item_no":98,"description":"Sealtight Connector 90 deg 2-1/2\"","unit":"ea"},{"category":"Sealtight","item_no":99,"description":"Sealtight  1/2\"","unit":"lf"},{"category":"Sealtight","item_no":100,"description":"Sealtight  3/4\"","unit":"lf"},{"category":"Sealtight","item_no":101,"description":"Sealtight  1\"","unit":"lf"},{"category":"Sealtight","item_no":102,"description":"Sealtight  1-1/4\"","unit":"lf"},{"category":"Sealtight","item_no":103,"description":"Sealtight  1-1/2\"","unit":"lf"},{"category":"Sealtight","item_no":104,"description":"Sealtight  2\"","unit":"lf"},{"category":"Sealtight","item_no":105,"description":"Sealtight  2-1/2\"","unit":"lf"},{"category":"Wire","item_no":106,"description":"#14 THWN BLACK","unit":"lf"},{"category":"Wire","item_no":107,"description":"#14 THWN RED","unit":"lf"},{"category":"Wire","item_no":108,"description":"#12 THWN BLACK","unit":"lf"},{"category":"Wire","item_no":109,"description":"#12 THWN RED","unit":"lf"},{"category":"Wire","item_no":110,"description":"#12 THWN WHITE","unit":"lf"},{"category":"Wire","item_no":111,"description":"#12 THWN GREEN","unit":"lf"},{"category":"Wire","item_no":112,"description":"#10 THWN GREEN","unit":"lf"},{"category":"Wire","item_no":113,"description":"#10 THWN BLACK","unit":"lf"},{"category":"Wire","item_no":114,"description":"#10 THWN RED","unit":"lf"},{"category":"Wire","item_no":115,"description":"#10 THWN WHITE","unit":"lf"},{"category":"Wire","item_no":116,"description":"#6 THWN BLACK","unit":"lf"},{"category":"Wire","item_no":117,"description":"#6 THWN RED","unit":"lf"},{"category":"Wire","item_no":118,"description":"#6 THWN WHITE","unit":"lf"},{"category":"Wire","item_no":119,"description":"#6 THWN GREEN","unit":"lf"},{"category":"Wire","item_no":120,"description":"#2 THWN BLACK","unit":"lf"},{"category":"Wire","item_no":121,"description":"#2 THWN RED","unit":"lf"},{"category":"Wire","item_no":122,"description":"#2 THWN WHITE","unit":"lf"},{"category":"Wire","item_no":123,"description":"#2/0 BATTERY CABLE BLACK","unit":"lf"},{"category":"Wire","item_no":124,"description":"#2/0 BATTERY CABLE RED","unit":"ea"},{"category":"Wire","item_no":125,"description":"#10 PV WIRE BLACK 2KV","unit":"ea"},{"category":"Wire","item_no":126,"description":"4C/#18 CABLE","unit":"ea"},{"category":"Electrical Equipment","item_no":127,"description":"Disconnect Switch 240V-30A-2P-N3R","unit":"ea"},{"category":"Electrical Equipment","item_no":128,"description":"LOADCENTER 240V-125A-2P-N3R-8C GE","unit":"ea"},{"category":"Electrical Equipment","item_no":129,"description":"Ground Bar Kit TGL1","unit":"ea"},{"category":"Electrical Equipment","item_no":130,"description":"GE Breaker 100A-2P-Plug In","unit":"ea"},{"category":"Electrical Equipment","item_no":131,"description":"GE Breaker 60A-2P-Plug In","unit":"ea"},{"category":"Electrical Equipment","item_no":132,"description":"GE Breaker 20A-2P-Plug In","unit":"ea"},{"category":"Electrical Equipment","item_no":133,"description":"GE Breaker 20A-1P-Plug In","unit":"ea"},{"category":"Electrical Equipment","item_no":134,"description":"GE AFCI Breaker 20A-1P-Plug In","unit":"ea"},{"category":"Electrical Equipment","item_no":135,"description":"MARINE RATED BATTERY FUSE (BUSSCBBF150-CDBG)","unit":"ea"},{"category":"Electrical Equipment","item_no":136,"description":"BATTERY FUSE MOUNTING BAR ASSEMBLY 1/4-20 STUD","unit":"ea"},{"category":"Electrical Equipment","item_no":137,"description":"Filler Plate GE","unit":"ea"},{"category":"Electrical Equipment","item_no":138,"description":"Disconnect Switch 600VDC-30A-2P-N3R","unit":"ea"},{"category":"Electrical Equipment","item_no":139,"description":"Tape Clear 2\" pqte 6","unit":"ea"},{"category":"PVC Sch 40","item_no":172,"description":"PVC Conduleto LB 1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":173,"description":"PVC Conduleto LB 3/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":174,"description":"PVC Conduleto LB 1\"","unit":"ea"},{"category":"PVC Sch 40","item_no":175,"description":"PVC Conduleto LB 1-1/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":176,"description":"PVC Conduleto LB 1-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":177,"description":"PVC Conduleto LB 2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":178,"description":"PVC Conduleto LB 2-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":179,"description":"PVC Conduleto LL 1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":180,"description":"PVC Conduleto LL 3/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":181,"description":"PVC Conduleto LL 1\"","unit":"ea"},{"category":"PVC Sch 40","item_no":182,"description":"PVC Conduleto LL 1-1/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":183,"description":"PVC Conduleto LL 1-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":184,"description":"PVC Conduleto LL 2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":185,"description":"PVC Conduleto LL 2-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":186,"description":"PVC Conduleto LR 1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":187,"description":"PVC Conduleto LR 3/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":188,"description":"PVC Conduleto LR 1\"","unit":"ea"},{"category":"PVC Sch 40","item_no":189,"description":"PVC Conduleto LR 1-1/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":190,"description":"PVC Conduleto LR 1-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":191,"description":"PVC Conduleto LR 2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":192,"description":"PVC Conduleto LR 2-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":193,"description":"PVC Conduleto T 1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":194,"description":"PVC Conduleto T 3/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":195,"description":"PVC Conduleto T 1\"","unit":"ea"},{"category":"PVC Sch 40","item_no":196,"description":"PVC Conduleto T 1-1/4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":197,"description":"PVC Conduleto T 1-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":198,"description":"PVC Conduleto T 2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":199,"description":"PVC Conduleto T 2-1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":200,"description":"PVC Junction Box 4\"x4\"x2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":201,"description":"PVC Junction Box 4\"x4\"x4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":202,"description":"PVC Juntion Box 6\" x 6\" x 4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":203,"description":"PVC Juntion Box 6\" x 6\" x 6\"","unit":"ea"},{"category":"PVC Sch 40","item_no":204,"description":"PVC Junction Box 8\"x 8\"x 2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":205,"description":"PVC Junction Box 8\"x 8\"x 4\"","unit":"ea"},{"category":"PVC Sch 40","item_no":206,"description":"PVC Junction Box 12\" x 12\" x 6\"","unit":"ea"},{"category":"PVC Sch 40","item_no":207,"description":"CGV (NPT)Connector 1/2\"","unit":"ea"},{"category":"PVC Sch 40","item_no":208,"description":"CGV (NPT)Connector 3/4\"\"","unit":"ea"},{"category":"PVC Sch 40","item_no":227,"description":"EMT Indtrial Cover Duplex 1 2\" x 4\"","unit":"ea"},{"category":"EMT","item_no":228,"description":"EMT Square Box 4\" x 4\" x 1-7/8\" ko 3/4\"","unit":"ea"},{"category":"EMT","item_no":229,"description":"EMT Octagonal Box ko 3/4\"","unit":"ea"},{"category":"EMT","item_no":230,"description":"EMT Blind Cover 4\" x 4\"","unit":"ea"},{"category":"EMT","item_no":231,"description":"EMT Indtrial Cover Duplex 1 Gang 4\" x 4\"","unit":"ea"},{"category":"EMT","item_no":232,"description":"EMT Indtrial Cover Switch 1 Gang 4\" x 4\"","unit":"ea"},{"category":"EMT","item_no":233,"description":"FS 2\" x 4\" Box ko 3/4\"","unit":"ea"},{"category":"EMT","item_no":234,"description":"Recep 20A GFCI Duplex WHT","unit":"ea"},{"category":"EMT","item_no":235,"description":"Recep 20A Duplex WHT","unit":"ea"},{"category":"EMT","item_no":236,"description":"Switch 1 pole 20A WHT","unit":"ea"},{"category":"EMT","item_no":237,"description":"Roseta Ceramica","unit":"ea"},{"category":"EMT","item_no":238,"description":"Bombilla LED","unit":"ea"},{"category":"EMT","item_no":239,"description":"GFCI White Cover 2 x 4","unit":"ea"},{"category":"Ground","item_no":240,"description":"Ground Rod 5/8\" x 8'","unit":"ea"},{"category":"Ground","item_no":241,"description":"Ground Rod Clamp 5/8\"","unit":"ea"},{"category":"Ground","item_no":242,"description":"RGD Conduit 1/2\" x 10'","unit":"ea"},{"category":"Ground","item_no":243,"description":"Single Terminal Lug #6 AWG","unit":"ea"},{"category":"Micelaneous","item_no":244,"description":"Channel Unitstrut 7/8\" x 1-5/8\"","unit":"lf"},{"category":"Micelaneous","item_no":245,"description":"Tornillos Tapcom 1/4\" x 1-1/4\"","unit":"ea"},{"category":"Micelaneous","item_no":246,"description":"Tornillos Teks #10 x 1\"","unit":"ea"},{"category":"Micelaneous","item_no":247,"description":"Pega PVC 32oz","unit":"ea"},{"category":"Micelaneous","item_no":248,"description":"Sykaflex Construction Sealant/M1","unit":"ea"},{"category":"Micelaneous","item_no":249,"description":"Flat Washer 1/4\"","unit":"ea"},{"category":"Micelaneous","item_no":250,"description":"MezclaLista","unit":"ea"},{"category":"CLAMPS","item_no":252,"description":"EMT Conduit Strap 1/2\"","unit":"ea"},{"category":"CLAMPS","item_no":253,"description":"EMT Conduit Strap 3/4\"","unit":"ea"},{"category":"CLAMPS","item_no":254,"description":"EMT Conduit Strap 1\"","unit":"ea"},{"category":"CLAMPS","item_no":255,"description":"EMT Conduit Strap 1-1/4\"","unit":"ea"},{"category":"CLAMPS","item_no":256,"description":"EMT Conduit Strap 1-1/2\"","unit":"ea"},{"category":"CLAMPS","item_no":257,"description":"EMT Conduit Strap 2\"","unit":"ea"},{"category":"CLAMPS","item_no":258,"description":"EMT Conduit Strap 2-1/2\"","unit":"ea"},{"category":"CLAMPS","item_no":259,"description":"RGD Conduit Strap 1/2\"","unit":"ea"},{"category":"CLAMPS","item_no":260,"description":"RGD Conduit Strap 3/4\"","unit":"ea"},{"category":"CLAMPS","item_no":261,"description":"RGD Conduit Strap 1\"","unit":"ea"},{"category":"CLAMPS","item_no":262,"description":"RGD Conduit Strap 1-1/4\"","unit":"ea"},{"category":"CLAMPS","item_no":263,"description":"RGD Conduit Strap 1-1/2\"","unit":"ea"},{"category":"CLAMPS","item_no":264,"description":"RGD Conduit Strap 2\"","unit":"ea"},{"category":"CLAMPS","item_no":265,"description":"RGD Conduit Strap 2-1/2\"","unit":"ea"},{"category":"CLAMPS","item_no":266,"description":"Unitstruts Clamp 1/2\"","unit":"ea"},{"category":"CLAMPS","item_no":267,"description":"Unitstruts Clamp 3/4\"","unit":"ea"},{"category":"CLAMPS","item_no":268,"description":"Unitstruts Clamp 1\"","unit":"ea"},{"category":"CLAMPS","item_no":269,"description":"Unitstruts Clamp 1-1/4\"","unit":"ea"},{"category":"CLAMPS","item_no":270,"description":"Unitstruts Clamp 1-1/2\"","unit":"ea"},{"category":"CLAMPS","item_no":271,"description":"Unitstruts Clamp 2\"","unit":"ea"},{"category":"CLAMPS","item_no":272,"description":"Unitstruts Clamp 2-1/2\"","unit":"ea"},{"category":"Wire","item_no":273,"description":"COOPER C COMPRESION CLAMP #2","unit":"ea"},{"category":"Wire","item_no":274,"description":"COOPER C COMPRESION CLAMP #6","unit":"ea"},{"category":"Wire","item_no":275,"description":"SPLT BOLT #2/0","unit":"ea"},{"category":"Wire","item_no":276,"description":"BUTT CONNECTOR #12-#10","unit":"ea"},{"category":"Wire","item_no":277,"description":"BUTT CONNECTOR #22-#16","unit":"ea"},{"category":"Wire","item_no":278,"description":"FLEX CABLE MULTI STRND HY LUG #2/0","unit":"ea"},{"category":"Wire","item_no":279,"description":"Electrical Tape Red","unit":"ea"},{"category":"Wire","item_no":280,"description":"Electrical Tape Black","unit":"ea"},{"category":"Wire","item_no":281,"description":"Electrical Tape Green","unit":"ea"},{"category":"Wire","item_no":282,"description":"Electrical Tape White","unit":"ea"},{"category":"Wire","item_no":283,"description":"Rubber Tape","unit":"ea"},{"category":"Wire","item_no":284,"description":"Cable tie 11\" Black UV Resistant","unit":"ea"},{"category":"Wire","item_no":285,"description":"Male MC4 Connector","unit":"ea"},{"category":"Wire","item_no":286,"description":"Female MC4 Connector","unit":"ea"},{"category":"Wire","item_no":287,"description":"Wire Nuts Red","unit":"box"},{"category":"Wire","item_no":288,"description":"Wire Nuts Yellow","unit":"box"},{"category":"Wire","item_no":289,"description":"Ferrules #2/0","unit":"ea"},{"category":"Wire","item_no":290,"description":"Comprenssion Splice (Tabaquito) #2","unit":"ea"},{"category":"Wire","item_no":291,"description":"Spring nut 3/8\"","unit":"ea"},{"category":"Wire","item_no":292,"description":"Brocha 2\"","unit":"ea"},{"category":"Wire","item_no":293,"description":"Bolsa Basura","unit":"box"},{"category":"Electrical Equipment","item_no":294,"description":"PV Modules CS 455W","unit":"ea"},{"category":"Electrical Equipment","item_no":295,"description":"Baterry EFLEX","unit":"ea"},{"category":"Electrical Equipment","item_no":296,"description":"ENVY 8K","unit":"ea"},{"category":"Electrical Equipment","item_no":297,"description":"Envy MDP","unit":"ea"},{"category":"Electrical Equipment","item_no":298,"description":"Wireway 2 Batt","unit":"ea"},{"category":"Electrical Equipment","item_no":299,"description":"Wireway 3 Batt","unit":"ea"},{"category":"Electrical Equipment","item_no":300,"description":"Unirac Channel","unit":"ea"},{"category":"Electrical Equipment","item_no":301,"description":"Unirac Long Legs","unit":"ea"},{"category":"Electrical Equipment","item_no":302,"description":"Unirac Short Legs","unit":"ea"},{"category":"Electrical Equipment","item_no":303,"description":"Unirac End Clamp","unit":"ea"},{"category":"Electrical Equipment","item_no":304,"description":"Unirac Mid-Clamp","unit":"ea"},{"category":"Electrical Equipment","item_no":305,"description":"Unirac Bonding Splice","unit":"ea"},{"category":"Electrical Equipment","item_no":306,"description":"Unirac Grounding Lugs","unit":"ea"},{"category":"Electrical Equipment","item_no":307,"description":"Wedge Anchors 3/8\" x 3\"","unit":"ea"}]</script>
+
+<script>
+(function(){
+  "use strict";
+
+  const CATALOG = JSON.parse(document.getElementById('catalog-data').textContent);
+  const byNo = {};
+  CATALOG.forEach(it => byNo[it.item_no] = it);
+  const byDesc = {};
+  CATALOG.forEach(it => byDesc[it.description.trim().toLowerCase()] = it);
+  const CATEGORIES = [...new Set(CATALOG.map(i => i.category))];
+
+  // Reconoce: "45", "CEWRI-45", el nombre exacto de la pieza, o un nombre parcial inequívoco
+  function resolveItem(raw){
+    if(!raw) return null;
+    const s = String(raw).trim();
+    // nombre exacto primero (los QR nuevos llevan el nombre)
+    const exact = byDesc[s.toLowerCase()];
+    if(exact) return exact;
+    // número puro o con prefijo CEWRI
+    const m = s.match(/^(?:cewri[\s-]*)?(\d+)$/i);
+    if(m && byNo[parseInt(m[1])]) return byNo[parseInt(m[1])];
+    // formato de QR de texto: "45 - PVC Bushing 1""
+    const m2 = s.match(/^(\d+)\s*[-–·|]/);
+    if(m2 && byNo[parseInt(m2[1])]) return byNo[parseInt(m2[1])];
+    // nombre parcial: solo si coincide con UNA sola pieza
+    if(s.length >= 4){
+      const q = s.toLowerCase();
+      const matches = CATALOG.filter(it => it.description.toLowerCase().includes(q));
+      if(matches.length === 1) return matches[0];
+    }
+    return null;
+  }
+
+  let stock = {};      // { itemNo: { qty, threshold } }
+  let movements = [];  // [{id, itemNo, type, qty, caso, ts}]
+  let storageReady = false;
+  let activeCatFilter = 'todas';
+  let activeLabelFilter = 'todas';
+  let currentModalItem = null;
+  let modalMode = 'salida';
+
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => document.querySelectorAll(sel);
+
+  function todayKey(){ return new Date().toISOString().slice(0,10); }
+
+  function showToast(msg){
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 1800);
+  }
+
+  // ---------- storage (multicapa: window.storage -> localStorage -> memoria) ----------
+  // window.storage funciona dentro de Claude; localStorage cubre cuando la página
+  // se abre en un navegador normal (fuera de Claude, donde window.storage no existe).
+  const memStore = {};
+  const store = {
+    async get(key){
+      // 1) window.storage (Claude)
+      if(window.storage && typeof window.storage.get === 'function'){
+        try{
+          const r = await window.storage.get(key, false);
+          if(r && r.value !== undefined && r.value !== null) return r.value;
+        }catch(e){ /* clave no existe aún */ }
+      }
+      // 2) localStorage (navegador normal)
+      try{
+        if(typeof localStorage !== 'undefined'){
+          const v = localStorage.getItem('cewri::' + key);
+          if(v !== null) return v;
+        }
+      }catch(e){ /* bloqueado */ }
+      // 3) memoria
+      return memStore[key] !== undefined ? memStore[key] : null;
+    },
+    async set(key, value){
+      let savedSomewhere = false;
+      if(window.storage && typeof window.storage.set === 'function'){
+        try{ await window.storage.set(key, value, false); savedSomewhere = true; }
+        catch(e){ console.error('window.storage set failed', e); }
+      }
+      try{
+        if(typeof localStorage !== 'undefined'){
+          localStorage.setItem('cewri::' + key, value);
+          savedSomewhere = true;
+        }
+      }catch(e){ /* bloqueado o lleno */ }
+      memStore[key] = value;
+      return savedSomewhere;
+    }
+  };
+
+  async function loadState(){
+    try{
+      const s = await store.get('cewri-stock');
+      stock = s ? JSON.parse(s) : {};
+    }catch(e){ stock = {}; }
+    try{
+      const m = await store.get('cewri-movements');
+      movements = m ? JSON.parse(m) : [];
+    }catch(e){ movements = []; }
+    storageReady = true;
+    renderAll();
+  }
+  async function saveStock(){
+    const ok = await store.set('cewri-stock', JSON.stringify(stock));
+    if(!ok) showToast('⚠ No se pudo guardar — exporta un respaldo');
+  }
+  async function saveMovements(){
+    const ok = await store.set('cewri-movements', JSON.stringify(movements));
+    if(!ok) showToast('⚠ No se pudo guardar — exporta un respaldo');
+  }
+
+  function getStock(itemNo){
+    return stock[itemNo] || { qty:0, threshold:null };
+  }
+
+  // ---------- tabs ----------
+  function setTab(tab){
+    $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+    $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+    $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-'+tab));
+    if(tab==='etiquetas'){ if($('#labelChips').children.length===0) renderLabelChips(); if($('#labelGrid').children.length===0) renderLabels(); }
+    if(tab !== 'escanear') stopScan();
+  }
+  $$('.tab, .nav-btn').forEach(b => b.addEventListener('click', ()=> setTab(b.dataset.tab)));
+
+  // ---------- render: resumen ----------
+  function renderResumen(){
+    $('#statTotal').textContent = CATALOG.length;
+    const lowItems = CATALOG.filter(it => {
+      const s = getStock(it.item_no);
+      return s.threshold!==null && s.threshold!==undefined && s.qty <= s.threshold;
+    });
+    $('#statLow').textContent = lowItems.length;
+
+    const tKey = todayKey();
+    const todayCount = movements.filter(m => m.ts.slice(0,10)===tKey).length;
+    $('#statToday').textContent = todayCount;
+
+    const pill = $('#alertPill');
+    if(lowItems.length>0){
+      pill.classList.remove('ok');
+      $('#alertPillText').textContent = lowItems.length + (lowItems.length===1 ? ' bajo' : ' bajos');
+    } else {
+      pill.classList.add('ok');
+      $('#alertPillText').textContent = 'todo ok';
+    }
+
+    const hasAnyData = Object.keys(stock).length > 0;
+    $('#zeroDataNote').style.display = hasAnyData ? 'none' : 'block';
+
+    const lowBox = $('#lowStockList');
+    lowBox.innerHTML = '';
+    if(lowItems.length===0){
+      lowBox.innerHTML = '<div class="empty-note">No hay materiales por debajo de su mínimo (o aún no has definido mínimos).</div>';
+    } else {
+      lowItems.slice(0,12).forEach(it => lowBox.appendChild(itemRow(it, true)));
+    }
+
+    const recentBox = $('#recentMoves');
+    recentBox.innerHTML = '';
+    if(movements.length===0){
+      recentBox.innerHTML = '<div class="empty-note">Todavía no hay movimientos registrados.</div>';
+    } else {
+      movements.slice(-5).reverse().forEach(m => recentBox.appendChild(moveRow(m)));
+    }
+  }
+
+  function itemRow(it, highlightLow){
+    const s = getStock(it.item_no);
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    const isLow = s.threshold!==null && s.threshold!==undefined && s.qty <= s.threshold;
+    row.innerHTML = `
+      <div class="item-code mono">#${it.item_no}</div>
+      <div class="item-info">
+        <div class="desc">${escapeHtml(it.description)}</div>
+        <div class="cat">${escapeHtml(it.category)}</div>
+      </div>
+      <div class="item-stock">
+        <div class="qty ${isLow?'low':''}">${s.qty}</div>
+        <div class="unit">${it.unit}</div>
+      </div>`;
+    row.addEventListener('click', ()=> openModal(it));
+    return row;
+  }
+
+  function moveRow(m){
+    const it = byNo[m.itemNo];
+    const row = document.createElement('div');
+    row.className = 'movement-row';
+    const d = new Date(m.ts);
+    const timeStr = d.toLocaleDateString('es-PR', {month:'short', day:'numeric'}) + ' · ' + d.toLocaleTimeString('es-PR', {hour:'2-digit', minute:'2-digit'});
+    row.innerHTML = `
+      <div class="mv-badge ${m.type}">${m.type==='entrada' ? '↓' : '↑'}</div>
+      <div class="mv-info">
+        <div class="desc">${it ? escapeHtml(it.description) : 'Ítem #'+m.itemNo}</div>
+        <div class="meta">${timeStr}${m.caso ? ' · '+escapeHtml(m.caso) : ''}${m.persona ? ' · '+escapeHtml(m.persona) : ''}</div>
+      </div>
+      <div class="mv-qty" style="color:${m.type==='entrada'?'var(--ok)':'var(--warn)'}">${m.type==='entrada'?'+':'-'}${m.qty}</div>`;
+    return row;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- render: catalogo ----------
+  function renderCatChips(){
+    const box = $('#catChips');
+    box.innerHTML = '';
+    const all = document.createElement('div');
+    all.className = 'chip' + (activeCatFilter==='todas' ? ' active' : '');
+    all.textContent = 'Todas';
+    all.onclick = ()=>{ activeCatFilter='todas'; renderCatChips(); renderCatalog(); };
+    box.appendChild(all);
+    CATEGORIES.forEach(c => {
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (activeCatFilter===c ? ' active' : '');
+      chip.textContent = c;
+      chip.onclick = ()=>{ activeCatFilter=c; renderCatChips(); renderCatalog(); };
+      box.appendChild(chip);
+    });
+  }
+
+  function renderCatalog(){
+    const q = ($('#catSearch').value || '').toLowerCase().trim();
+    const box = $('#catalogList');
+    box.innerHTML = '';
+    let list = CATALOG;
+    if(activeCatFilter!=='todas') list = list.filter(i => i.category===activeCatFilter);
+    if(q) list = list.filter(i => i.description.toLowerCase().includes(q) || String(i.item_no).includes(q));
+    if(list.length===0){
+      box.innerHTML = '<div class="empty-note">Sin resultados.</div>';
+      return;
+    }
+    list.slice(0,150).forEach(it => box.appendChild(itemRow(it)));
+    if(list.length>150){
+      const more = document.createElement('div');
+      more.className='empty-note';
+      more.textContent = `Mostrando 150 de ${list.length} — refina tu búsqueda.`;
+      box.appendChild(more);
+    }
+  }
+  $('#catSearch').addEventListener('input', renderCatalog);
+
+  // ---------- render: movimientos ----------
+  function renderMovements(){
+    const box = $('#allMoves');
+    box.innerHTML = '';
+    if(movements.length===0){
+      box.innerHTML = '<div class="empty-note">Todavía no hay movimientos registrados.</div>';
+      return;
+    }
+    movements.slice().reverse().forEach(m => box.appendChild(moveRow(m)));
+  }
+
+  // ---------- render: etiquetas ----------
+  function renderLabelChips(){
+    const box = $('#labelChips');
+    box.innerHTML = '';
+    const all = document.createElement('div');
+    all.className = 'chip' + (activeLabelFilter==='todas' ? ' active' : '');
+    all.textContent = 'Todas';
+    all.onclick = ()=>{ activeLabelFilter='todas'; renderLabelChips(); renderLabels(); };
+    box.appendChild(all);
+    CATEGORIES.forEach(c => {
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (activeLabelFilter===c ? ' active' : '');
+      chip.textContent = c;
+      chip.onclick = ()=>{ activeLabelFilter=c; renderLabelChips(); renderLabels(); };
+      box.appendChild(chip);
+    });
+  }
+  function renderLabels(){
+    const grid = $('#labelGrid');
+    grid.innerHTML = '';
+    let baseUrl = ($('#baseUrlInput').value || '').trim();
+    if(baseUrl && !/^https?:\/\//i.test(baseUrl)) baseUrl = 'https://' + baseUrl;
+    let list = CATALOG;
+    if(activeLabelFilter!=='todas') list = list.filter(i => i.category===activeLabelFilter);
+    list.forEach(it => {
+      const card = document.createElement('div');
+      card.className = 'label-card';
+      const qrId = 'qr-' + it.item_no;
+      card.innerHTML = `
+        <div class="qr-box" id="${qrId}"></div>
+        <div class="lbl-desc" style="font-size:10.5px; font-weight:600; max-height:3.9em;">${escapeHtml(it.description)}</div>
+        <div class="lbl-code" style="font-size:13px; margin-top:3px;">${it.item_no}</div>`;
+      grid.appendChild(card);
+      const includeDb = $('#includeDbInQr').checked && backendUrl;
+      let qrText;
+      if(baseUrl){
+        qrText = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'item=' + it.item_no;
+        if(includeDb) qrText += '&db=' + encodeURIComponent(backendUrl);
+      } else {
+        qrText = it.item_no + ' - ' + it.description;
+      }
+      try{
+        new QRCode(document.getElementById(qrId), {
+          text: qrText,
+          width: 84, height: 84,
+          colorDark:'#111111', colorLight:'#ffffff',
+          correctLevel: (window.QRCode && QRCode.CorrectLevel) ? QRCode.CorrectLevel.M : undefined
+        });
+      }catch(e){ /* library not loaded yet */ }
+    });
+  }
+  document.addEventListener('DOMContentLoaded', ()=>{});
+  // guardar/recuperar la URL base
+  (async function(){
+    try{
+      const v = await store.get('cewri-baseurl');
+      if(v) $('#baseUrlInput').value = v;
+    }catch(e){ /* sin URL guardada */ }
+  })();
+  document.getElementById('btnRegenLabels').addEventListener('click', async ()=>{
+    try{ await store.set('cewri-baseurl', ($('#baseUrlInput').value||'').trim()); }catch(e){}
+    renderLabels();
+    showToast('Etiquetas generadas');
+  });
+
+  function renderAll(){
+    renderResumen();
+    renderCatChips();
+    renderCatalog();
+    renderMovements();
+  }
+
+  // ---------- modal ----------
+  function openModal(it){
+    currentModalItem = it;
+    modalMode = 'salida';
+    const s = getStock(it.item_no);
+    $('#mCode').textContent = 'CEWRI-' + it.item_no;
+    $('#mDesc').textContent = it.description;
+    $('#mMeta').textContent = it.category + ' · unidad: ' + it.unit;
+    $('#mStockNow').textContent = s.qty;
+    $('#mThreshNow').textContent = (s.threshold===null || s.threshold===undefined) ? 'sin definir' : s.threshold;
+    $('#threshInput').value = (s.threshold===null || s.threshold===undefined) ? '' : s.threshold;
+    $('#qtyInput').value = 1;
+    $('#qtyUnit').textContent = it.unit;
+    $('#casoInput').value = '';
+    $('#personaInput').value = '';
+    setModalMode('salida');
+    $('#modalOverlay').classList.add('show');
+  }
+  function closeModal(){
+    $('#modalOverlay').classList.remove('show');
+    currentModalItem = null;
+  }
+  // cancelar también apaga el modo encadenado
+  function setModalMode(mode){
+    modalMode = mode;
+    $('#btnEntrada').classList.toggle('on', mode==='entrada');
+    $('#btnSalida').classList.toggle('on', mode==='salida');
+    $('#casoField').style.display = mode==='salida' ? 'block' : 'none';
+    $('#personaField').style.display = mode==='salida' ? 'block' : 'none';
+    if(mode==='salida') renderPersonaChips();
+  }
+  $('#btnEntrada').onclick = ()=> setModalMode('entrada');
+  $('#btnSalida').onclick = ()=> setModalMode('salida');
+  $('#mClose').onclick = ()=>{ quickChainMode=false; closeModal(); };
+  $('#mCancel').onclick = ()=>{ quickChainMode=false; closeModal(); };
+  $('#qtyMinus').onclick = ()=>{ const i=$('#qtyInput'); i.value = Math.max(1, (parseInt(i.value)||1)-1); };
+  $('#qtyPlus').onclick = ()=>{ const i=$('#qtyInput'); i.value = (parseInt(i.value)||1)+1; };
+
+  $('#btnSetThresh').onclick = async ()=>{
+    if(!currentModalItem) return;
+    const val = $('#threshInput').value;
+    const no = currentModalItem.item_no;
+    if(!stock[no]) stock[no] = { qty:0, threshold:null };
+    stock[no].threshold = val==='' ? null : Math.max(0, parseInt(val)||0);
+    await saveStock();
+    await enqueue({ action:'threshold', itemNo: no, description: currentModalItem.description, threshold: stock[no].threshold });
+    $('#mThreshNow').textContent = stock[no].threshold===null ? 'sin definir' : stock[no].threshold;
+    renderAll();
+    showToast('Mínimo actualizado');
+  };
+
+  // chips de personas recientes (últimos 6 nombres usados en salidas)
+  function recentPersonas(){
+    const seen = [];
+    for(let i = movements.length - 1; i >= 0 && seen.length < 6; i--){
+      const p = movements[i].persona;
+      if(p && !seen.includes(p)) seen.push(p);
+    }
+    return seen;
+  }
+  function renderPersonaChips(){
+    const box = $('#personaChips');
+    box.innerHTML = '';
+    recentPersonas().forEach(name => {
+      const chip = document.createElement('div');
+      chip.className = 'chip';
+      chip.textContent = name;
+      chip.onclick = ()=>{ $('#personaInput').value = name; };
+      box.appendChild(chip);
+    });
+  }
+
+  $('#mConfirm').onclick = async ()=>{
+    if(!currentModalItem) return;
+    const qty = Math.max(1, parseInt($('#qtyInput').value)||1);
+    const caso = $('#casoInput').value.trim();
+    const persona = $('#personaInput').value.trim();
+    if(modalMode==='salida' && !caso){
+      showToast('Ingresa el número de caso PR-CI');
+      return;
+    }
+    if(modalMode==='salida' && !persona){
+      showToast('Indica quién se lleva el material');
+      return;
+    }
+    const no = currentModalItem.item_no;
+    if(!stock[no]) stock[no] = { qty:0, threshold:null };
+    if(modalMode==='entrada'){
+      stock[no].qty += qty;
+    } else {
+      stock[no].qty = Math.max(0, stock[no].qty - qty);
+    }
+    const mv = {
+      id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      itemNo: no, type: modalMode, qty,
+      caso: modalMode==='salida' ? caso : null,
+      persona: modalMode==='salida' ? persona : null,
+      ts: new Date().toISOString()
+    };
+    movements.push(mv);
+    await enqueue({ action:'movement', movement: Object.assign({description: currentModalItem.description, unit: currentModalItem.unit}, mv) });
+    await saveStock();
+    await saveMovements();
+    renderAll();
+    closeModal();
+    showToast(modalMode==='entrada' ? 'Entrada registrada ✓' : 'Salida registrada ✓');
+    if(quickChainMode){
+      quickChainMode = false;
+      quickNum.value = '';
+      quickPreview.innerHTML = 'Registrado. Escanea el siguiente material…';
+      quickPreview.style.color = 'var(--ok)';
+      setTimeout(()=> quickNum.focus(), 250);
+    }
+  };
+
+  // ---------- captura rápida ----------
+  const quickNum = $('#quickNum');
+  const quickPreview = $('#quickPreview');
+  let quickChainMode = false; // tras registrar, vuelve al campo para el siguiente
+
+  function parseQuickInput(raw){
+    const it = resolveItem(raw);
+    return it ? it.item_no : null;
+  }
+  quickNum.addEventListener('input', ()=>{
+    const it = resolveItem(quickNum.value);
+    if(it){
+      const s = getStock(it.item_no);
+      quickPreview.innerHTML = '✓ <b>' + escapeHtml(it.description) + '</b> · stock: ' + s.qty + ' ' + it.unit;
+      quickPreview.style.color = 'var(--ok)';
+    } else if(quickNum.value){
+      quickPreview.textContent = 'Sin coincidencia todavía…';
+      quickPreview.style.color = 'var(--text-muted)';
+    } else {
+      quickPreview.textContent = '';
+    }
+  });
+  function quickGo(){
+    const it = resolveItem(quickNum.value);
+    if(it){
+      quickChainMode = true;
+      openModal(it);
+    } else {
+      showToast('No se encontró esa pieza en el catálogo');
+    }
+  }
+  $('#btnQuickGo').onclick = quickGo;
+  quickNum.addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); quickGo(); } });
+
+  // ---------- manual search (Escanear tab) ----------
+  $('#manualSearch').addEventListener('input', function(){
+    const q = this.value.toLowerCase().trim();
+    const box = $('#manualResults');
+    box.innerHTML = '';
+    if(!q){ return; }
+    const list = CATALOG.filter(i => i.description.toLowerCase().includes(q) || String(i.item_no).includes(q)).slice(0,8);
+    if(list.length===0){ box.innerHTML = '<div class="empty-note">Sin resultados.</div>'; return; }
+    list.forEach(it => box.appendChild(itemRow(it)));
+  });
+
+  // ---------- QR scanning ----------
+  let stream = null, scanLoopId = null;
+  const video = $('#video');
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently:true });
+
+  async function startScan(){
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      video.srcObject = stream;
+      await video.play();
+      $('#scanCtaBox').style.display = 'none';
+      $('#viewfinderWrap').style.display = 'block';
+      $('#btnStopScan').style.display = 'block';
+      $('#scanStatus').textContent = 'Buscando código…';
+      tickScan();
+    }catch(e){
+      showToast('Cámara en vivo bloqueada — usa "Tomar foto"');
+      console.error(e);
+    }
+  }
+  function stopScan(){
+    if(scanLoopId) cancelAnimationFrame(scanLoopId);
+    scanLoopId = null;
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+    $('#scanCtaBox').style.display = 'block';
+    $('#viewfinderWrap').style.display = 'none';
+    $('#btnStopScan').style.display = 'none';
+  }
+  function tickScan(){
+    if(!stream) return;
+    if(video.readyState === video.HAVE_ENOUGH_DATA){
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imgData = ctx.getImageData(0,0,canvas.width, canvas.height);
+      const code = window.jsQR ? jsQR(imgData.data, imgData.width, imgData.height) : null;
+      if(code && code.data){
+        handleScanResult(code.data);
+        return; // stop loop; will restart if user scans again
+      }
+    }
+    scanLoopId = requestAnimationFrame(tickScan);
+  }
+  function handleScanResult(data){
+    const it = resolveItem(data);
+    if(it){
+      $('#scanStatus').textContent = 'Encontrado: ' + it.description;
+      stopScan();
+      openModal(it);
+    } else {
+      $('#scanStatus').textContent = 'Código no reconocido, sigue intentando…';
+      scanLoopId = requestAnimationFrame(tickScan);
+    }
+  }
+  $('#btnStartScan').onclick = startScan;
+  $('#btnStopScan').onclick = stopScan;
+
+  // ---------- QR desde foto (funciona sin permiso de cámara en vivo) ----------
+  $('#btnPhotoScan').onclick = ()=> $('#photoInput').click();
+  $('#photoInput').addEventListener('change', function(){
+    const file = this.files && this.files[0];
+    this.value = ''; // permitir re-tomar la misma foto
+    if(!file) return;
+    showToast('Leyendo foto…');
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = ()=>{
+      try{
+        // Escalar si la foto es muy grande (mejora velocidad y a veces la detección)
+        const maxDim = 1200;
+        let w = img.width, h = img.height;
+        const scale = Math.min(1, maxDim / Math.max(w, h));
+        w = Math.round(w * scale); h = Math.round(h * scale);
+        canvas.width = w; canvas.height = h;
+        ctx.drawImage(img, 0, 0, w, h);
+        let imgData = ctx.getImageData(0, 0, w, h);
+        let code = window.jsQR ? jsQR(imgData.data, w, h) : null;
+        // Segundo intento a resolución completa si falló
+        if(!code && scale < 1){
+          canvas.width = img.width; canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          imgData = ctx.getImageData(0, 0, img.width, img.height);
+          code = window.jsQR ? jsQR(imgData.data, img.width, img.height) : null;
+        }
+        URL.revokeObjectURL(url);
+        if(code && code.data){
+          const it = resolveItem(code.data);
+          if(it){ openModal(it); }
+          else { showToast('QR leído pero no coincide con el catálogo'); }
+        } else {
+          showToast('No se detectó QR — acércate más y evita reflejos');
+        }
+      }catch(e){
+        console.error(e);
+        showToast('Error al procesar la foto');
+      }
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); showToast('No se pudo abrir la foto'); };
+    img.src = url;
+  });
+
+  // ---------- sincronización con base de datos (Google Apps Script) ----------
+  let backendUrl = '';
+  let backendKey = '';
+  let outbox = []; // operaciones pendientes de enviar
+
+  function setSyncStatus(msg, color){
+    const el = $('#syncStatus');
+    el.textContent = msg;
+    el.style.color = color || 'var(--text-muted)';
+  }
+
+  async function apiGetState(){
+    const u = backendUrl + (backendUrl.includes('?') ? '&' : '?') + 'action=state&key=' + encodeURIComponent(backendKey);
+    const r = await fetch(u, { method:'GET' });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
+  async function apiPost(body){
+    // Content-Type text/plain evita el preflight CORS que Apps Script no maneja
+    // La clave se agrega al momento de enviar (no se guarda dentro de la cola)
+    const r = await fetch(backendUrl, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({}, body, { key: backendKey }))
+    });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
+
+  async function saveOutbox(){
+    try{ await store.set('cewri-outbox', JSON.stringify(outbox)); }catch(e){}
+  }
+  async function loadOutbox(){
+    try{
+      const v = await store.get('cewri-outbox');
+      outbox = v ? JSON.parse(v) : [];
+    }catch(e){ outbox = []; }
+  }
+  async function enqueue(op){
+    if(!backendUrl) return;
+    outbox.push(op);
+    await saveOutbox();
+    flushOutbox();
+  }
+  let flushing = false;
+  async function flushOutbox(){
+    if(flushing || !backendUrl || outbox.length===0) return;
+    flushing = true;
+    try{
+      while(outbox.length > 0){
+        const op = outbox[0];
+        const res = await apiPost(op);
+        if(!res || res.ok !== true){
+          if(res && res.error === 'clave incorrecta'){
+            setSyncStatus('⚠ Clave de acceso incorrecta — ' + outbox.length + ' registro(s) en cola. Corrige la clave y toca Conectar.', 'var(--warn)');
+            return; // no seguir reintentando hasta que corrijan la clave
+          }
+          throw new Error(res && res.error ? res.error : 'respuesta inválida');
+        }
+        outbox.shift();
+        await saveOutbox();
+      }
+      setSyncStatus('✓ Conectado y sincronizado — ' + new Date().toLocaleTimeString('es-PR', {hour:'2-digit', minute:'2-digit'}), 'var(--ok)');
+    }catch(e){
+      console.error('sync error', e);
+      setSyncStatus('⚠ Sin conexión con la base — ' + outbox.length + ' registro(s) en cola, se reintentará', 'var(--warn)');
+    }finally{
+      flushing = false;
+    }
+  }
+  // reintento periódico de la cola
+  setInterval(flushOutbox, 30000);
+
+  async function connectBackend(url, key, opts){
+    const pull = !opts || opts.pull !== false;
+    backendUrl = (url || '').trim();
+    backendKey = (key || '').trim();
+    await store.set('cewri-backendurl', backendUrl);
+    await store.set('cewri-backendkey', backendKey);
+    if(!backendUrl){
+      setSyncStatus('Sin base de datos — modo local (los datos viven solo en este dispositivo).');
+      return;
+    }
+    if(!backendKey){
+      setSyncStatus('⚠ Falta la clave de acceso — escríbela y toca Conectar.', 'var(--warn)');
+      return;
+    }
+    setSyncStatus('Conectando…');
+    try{
+      const state = await apiGetState();
+      if(state && state.ok !== true && state.error === 'clave incorrecta'){
+        setSyncStatus('⚠ Clave de acceso incorrecta — verifícala con quien administra la base.', 'var(--warn)');
+        return;
+      }
+      if(!state || state.ok !== true) throw new Error('respuesta inválida del servidor');
+      if(pull){
+        // el servidor es la fuente de la verdad al conectar
+        stock = state.stock || {};
+        movements = state.movements || [];
+        await store.set('cewri-stock', JSON.stringify(stock));
+        await store.set('cewri-movements', JSON.stringify(movements));
+        renderAll();
+      }
+      setSyncStatus('✓ Conectado y sincronizado — ' + new Date().toLocaleTimeString('es-PR', {hour:'2-digit', minute:'2-digit'}), 'var(--ok)');
+      flushOutbox();
+    }catch(e){
+      console.error('connect error', e);
+      setSyncStatus('⚠ No se pudo conectar — trabajando en modo local. Verifica la URL (/exec), la clave, y que la implementación permita "Cualquier persona".', 'var(--warn)');
+    }
+  }
+
+  $('#btnConnectBackend').onclick = ()=> connectBackend($('#backendUrlInput').value, $('#backendKeyInput').value, {pull:true});
+
+  // ---------- carga masiva de mínimos ----------
+  async function aplicarMinimos(texto){
+    const lineas = String(texto || '').split(/\r?\n/).map(l => l.trim()).filter(l => l);
+    let aplicados = 0;
+    const fallidas = [];
+    const paraServidor = [];
+    lineas.forEach(linea => {
+      // tolerante: "45, 20" | "45;20" | "45	20" | "PVC Bushing 1", 20
+      const partes = linea.split(/[,;\t]+/).map(p => p.trim()).filter(p => p !== '');
+      if(partes.length < 2){ fallidas.push(linea); return; }
+      const minTxt = partes[partes.length - 1];
+      const idTxt = partes.slice(0, partes.length - 1).join(', ');
+      const min = parseInt(minTxt);
+      const it = resolveItem(idTxt);
+      if(!it || isNaN(min) || min < 0){ fallidas.push(linea); return; }
+      if(!stock[it.item_no]) stock[it.item_no] = { qty:0, threshold:null };
+      stock[it.item_no].threshold = min;
+      paraServidor.push({ itemNo: it.item_no, threshold: min, description: it.description });
+      aplicados++;
+    });
+    await saveStock();
+    if(paraServidor.length && backendUrl){
+      await enqueue({ action:'thresholds', items: paraServidor });
+    }
+    renderAll();
+    const res = $('#minimosResultado');
+    let msg = '✓ ' + aplicados + ' mínimo(s) aplicado(s).';
+    if(paraServidor.length && backendUrl) msg += ' Enviados a la base de datos.';
+    if(paraServidor.length && !backendUrl) msg += ' (Sin base conectada: quedaron solo en este dispositivo.)';
+    if(fallidas.length){
+      msg += ' ⚠ ' + fallidas.length + ' línea(s) no reconocida(s): ' + fallidas.slice(0,3).join(' | ') + (fallidas.length>3 ? '…' : '');
+      res.style.color = 'var(--warn)';
+    } else {
+      res.style.color = 'var(--ok)';
+    }
+    res.textContent = msg;
+  }
+  $('#btnAplicarMinimos').onclick = ()=> aplicarMinimos($('#minimosPaste').value);
+  $('#btnMinimosCsv').onclick = ()=> $('#minimosFile').click();
+  $('#minimosFile').addEventListener('change', function(){
+    const file = this.files && this.files[0];
+    this.value = '';
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=> aplicarMinimos(reader.result);
+    reader.readAsText(file);
+  });
+
+  // ---------- respaldo exportar/importar ----------
+  $('#btnExport').onclick = ()=>{
+    const payload = {
+      app: 'inventario-cewri',
+      version: 1,
+      exported: new Date().toISOString(),
+      stock, movements
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const d = new Date();
+    a.download = 'respaldo-cewri-' + d.toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    showToast('Respaldo exportado ✓');
+  };
+  $('#btnImport').onclick = ()=> $('#importFile').click();
+  $('#importFile').addEventListener('change', function(){
+    const file = this.files && this.files[0];
+    this.value = '';
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async ()=>{
+      try{
+        const data = JSON.parse(reader.result);
+        if(data.app !== 'inventario-cewri' || !data.stock || !Array.isArray(data.movements)){
+          showToast('El archivo no parece un respaldo válido');
+          return;
+        }
+        const hasCurrent = Object.keys(stock).length > 0 || movements.length > 0;
+        if(hasCurrent && !confirm('Ya hay datos en esta sesión. ¿Reemplazarlos con el respaldo?')) return;
+        stock = data.stock;
+        movements = data.movements;
+        await saveStock();
+        await saveMovements();
+        if(backendUrl){
+          await enqueue({ action:'bulk', stock, movements, catalog: CATALOG });
+        }
+        renderAll();
+        showToast('Respaldo restaurado ✓');
+      }catch(e){
+        console.error(e);
+        showToast('No se pudo leer el respaldo');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  // ---------- init ----------
+  (async function init(){
+    await loadOutbox();
+
+    // 1) Leer parámetros del enlace (QR escaneado con la cámara del celular)
+    let paramItem = null;
+    let paramDb = null;
+    try{
+      const params = new URLSearchParams(window.location.search);
+      paramItem = params.get('item');
+      paramDb = params.get('db');
+      if(paramItem || paramDb){
+        // limpiar la URL para que recargar la página no repita la acción
+        history.replaceState(null, '', window.location.pathname);
+      }
+    }catch(e){ console.error(e); }
+
+    // 2) Conexión: la URL del enlace tiene prioridad; la clave nunca viaja en el QR
+    let urlBase = '';
+    let claveGuardada = '';
+    try{
+      if(paramDb && /^https:\/\/script\.google\.com\//.test(paramDb)){
+        urlBase = paramDb;
+        await store.set('cewri-backendurl', urlBase);
+      } else {
+        urlBase = (await store.get('cewri-backendurl')) || '';
+      }
+      claveGuardada = (await store.get('cewri-backendkey')) || '';
+    }catch(e){ console.error(e); }
+
+    // 3) Cargar datos locales primero (respuesta inmediata), luego el servidor
+    try{
+      await loadState();
+      if(urlBase){
+        $('#backendUrlInput').value = urlBase;
+        $('#backendKeyInput').value = claveGuardada;
+        if(claveGuardada){
+          await connectBackend(urlBase, claveGuardada, {pull:true});
+        } else {
+          backendUrl = urlBase;
+          setSyncStatus('⚠ Base configurada pero falta la clave de acceso — escríbela en Movimientos y toca Conectar.', 'var(--warn)');
+          if(paramItem) showToast('Falta la clave de acceso (pestaña Movimientos)');
+        }
+      }
+    }catch(e){
+      console.error(e);
+      if(!storageReady) await loadState();
+    }
+
+    // 4) Si el enlace traía una pieza, abrir su registro directamente
+    if(paramItem){
+      const no = parseInt(String(paramItem).replace(/\D/g,''));
+      const it = byNo[no];
+      if(it){
+        setTab('escanear');
+        openModal(it);
+      } else {
+        showToast('La etiqueta apunta a una pieza que no está en el catálogo');
+      }
+    }
+  })();
+})();
+</script>
+</body>
+</html>
