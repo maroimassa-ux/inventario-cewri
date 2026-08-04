@@ -275,6 +275,7 @@ input:focus{outline:none; border-color:var(--accent);}
 }
 .mv-badge.entrada{background:var(--ok-bg); color:var(--ok);}
 .mv-badge.salida{background:var(--warn-bg); color:var(--warn);}
+.mv-badge.faltante{background:var(--accent-dim); color:var(--accent);}
 .mv-info{flex:1; min-width:0;}
 .mv-info .desc{font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .mv-info .meta{font-size:11px; color:var(--text-muted); font-family:'IBM Plex Mono',monospace;}
@@ -731,13 +732,19 @@ input:focus{outline:none; border-color:var(--accent);}
     row.className = 'movement-row';
     const d = new Date(m.ts);
     const timeStr = d.toLocaleDateString('es-PR', {month:'short', day:'numeric'}) + ' · ' + d.toLocaleTimeString('es-PR', {hour:'2-digit', minute:'2-digit'});
+    const esFaltante = m.type === 'faltante';
+    const badge = esFaltante ? '!' : (m.type==='entrada' ? '↓' : '↑');
+    const badgeClass = esFaltante ? 'faltante' : m.type;
+    const qtyHtml = esFaltante
+      ? '<div class="mv-qty" style="color:var(--accent)">B/O ' + m.qty + '</div>'
+      : '<div class="mv-qty" style="color:' + (m.type==='entrada'?'var(--ok)':'var(--warn)') + '">' + (m.type==='entrada'?'+':'-') + m.qty + '</div>';
     row.innerHTML = `
-      <div class="mv-badge ${m.type}">${m.type==='entrada' ? '↓' : '↑'}</div>
+      <div class="mv-badge ${badgeClass}">${badge}</div>
       <div class="mv-info">
         <div class="desc">${it ? escapeHtml(it.description) : 'Ítem #'+m.itemNo}</div>
-        <div class="meta">${timeStr}${m.caso ? ' · '+escapeHtml(m.caso) : ''}${m.persona ? ' · '+escapeHtml(m.persona) : ''}</div>
+        <div class="meta">${timeStr}${m.caso ? ' · '+escapeHtml(m.caso) : ''}${m.persona ? ' · '+escapeHtml(m.persona) : ''}${esFaltante ? ' · faltante reportado' : ''}</div>
       </div>
-      <div class="mv-qty" style="color:${m.type==='entrada'?'var(--ok)':'var(--warn)'}">${m.type==='entrada'?'+':'-'}${m.qty}</div>`;
+      ${qtyHtml}`;
     return row;
   }
 
@@ -939,20 +946,22 @@ input:focus{outline:none; border-color:var(--accent);}
     });
   }
 
-  // aplica un movimiento (entrada/salida) al stock local y lo encola al servidor
+  // aplica un movimiento (entrada/salida/faltante) al stock local y lo encola al servidor
+  // 'faltante' = material que el instalador pidió y no había: se registra, NO descuenta stock
   async function aplicarMovimiento(it, tipo, qty, caso, persona){
     const no = it.item_no;
     if(!stock[no]) stock[no] = { qty:0, threshold:null };
     if(tipo==='entrada'){
       stock[no].qty += qty;
-    } else {
+    } else if(tipo==='salida'){
       stock[no].qty = Math.max(0, stock[no].qty - qty);
     }
+    const conContexto = (tipo==='salida' || tipo==='faltante');
     const mv = {
       id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
       itemNo: no, type: tipo, qty,
-      caso: tipo==='salida' ? caso : null,
-      persona: tipo==='salida' ? persona : null,
+      caso: conContexto ? caso : null,
+      persona: conContexto ? persona : null,
       ts: new Date().toISOString()
     };
     movements.push(mv);
@@ -1364,8 +1373,9 @@ input:focus{outline:none; border-color:var(--accent);}
       html += '<div class="hint" style="color:var(--warn);">No reconocidos: ' + noReconocidos.slice(0,5).join(' · ') + (noReconocidos.length>5?'…':'') + '</div>';
     }
     box.innerHTML = html;
-    $('#btnSalidasConfirm').style.display = registrables.length ? 'block' : 'none';
-    $('#btnSalidasConfirm').textContent = 'Registrar ' + registrables.length + ' salida(s)';
+    const totalReg = registrables.length + backorders.length;
+    $('#btnSalidasConfirm').style.display = totalReg ? 'block' : 'none';
+    $('#btnSalidasConfirm').textContent = 'Registrar ' + registrables.length + ' salida(s)' + (backorders.length ? ' + ' + backorders.length + ' faltante(s)' : '');
   }
 
   $('#btnSalidasFile').onclick = ()=> $('#salidasFile').click();
@@ -1389,7 +1399,7 @@ input:focus{outline:none; border-color:var(--accent);}
   });
 
   $('#btnSalidasConfirm').onclick = async ()=>{
-    if(!salidasParsed || !salidasParsed.registrables.length) return;
+    if(!salidasParsed || (!salidasParsed.registrables.length && !salidasParsed.backorders.length)) return;
     const persona = $('#salidasPersona').value.trim();
     const casos = normalizarCasos($('#salidasCasos').value);
     if(!persona){ showToast('Indica quién se llevó el material'); return; }
@@ -1401,10 +1411,13 @@ input:focus{outline:none; border-color:var(--accent);}
       for(const r of salidasParsed.registrables){
         await aplicarMovimiento(r.it, 'salida', r.qty, casos, persona);
       }
+      for(const b of salidasParsed.backorders){
+        await aplicarMovimiento(b.it, 'faltante', b.bo, casos, persona);
+      }
       await saveStock();
       await saveMovements();
       renderAll();
-      showToast('✓ ' + salidasParsed.registrables.length + ' salida(s) registrada(s)');
+      showToast('✓ ' + salidasParsed.registrables.length + ' salida(s) y ' + salidasParsed.backorders.length + ' faltante(s) registrados');
       salidasParsed = null;
       renderSalidasPreview();
       $('#salidasCasos').value = '';
