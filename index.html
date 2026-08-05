@@ -330,8 +330,11 @@ input:focus{outline:none; border-color:var(--accent);}
       Este prototipo arranca en cero — el stock y los mínimos no tienen datos reales todavía. Ve a <b>Catálogo</b> y toca un material para ingresar tu cantidad actual y su mínimo, o usa <b>Escanear</b> una vez imprimas las etiquetas QR.
     </div>
 
-    <div class="section-title">Materiales bajo el mínimo</div>
+    <div class="section-title" id="lowTitle">Materiales bajo el mínimo</div>
     <div id="lowStockList"></div>
+
+    <div class="section-title" id="sinRegTitle">Sin cantidad registrada</div>
+    <div id="sinRegList"></div>
 
     <div class="section-title">Últimos movimientos</div>
     <div id="recentMoves"></div>
@@ -692,10 +695,25 @@ input:focus{outline:none; border-color:var(--accent);}
 
     const lowBox = $('#lowStockList');
     lowBox.innerHTML = '';
+    $('#lowTitle').textContent = 'Materiales bajo el mínimo (' + lowItems.length + ')';
     if(lowItems.length===0){
       lowBox.innerHTML = '<div class="empty-note">No hay materiales por debajo de su mínimo (o aún no has definido mínimos).</div>';
     } else {
-      lowItems.slice(0,12).forEach(it => lowBox.appendChild(itemRow(it, true)));
+      lowItems.forEach(it => lowBox.appendChild(itemRow(it, true)));
+    }
+
+    // ítems sin cantidad registrada (stock 0) y sin mínimo definido
+    const sinRegistro = CATALOG.filter(it => {
+      const s = getStock(it.item_no);
+      return s.qty === 0 && (s.threshold === null || s.threshold === undefined);
+    });
+    const sinRegBox = $('#sinRegList');
+    sinRegBox.innerHTML = '';
+    $('#sinRegTitle').textContent = 'Sin cantidad registrada (' + sinRegistro.length + ')';
+    if(sinRegistro.length===0){
+      sinRegBox.innerHTML = '<div class="empty-note">Todos los materiales tienen cantidad o mínimo registrado.</div>';
+    } else {
+      sinRegistro.forEach(it => sinRegBox.appendChild(itemRow(it)));
     }
 
     const recentBox = $('#recentMoves');
