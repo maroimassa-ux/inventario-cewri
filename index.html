@@ -399,6 +399,23 @@ input:focus{outline:none; border-color:var(--accent);}
 
   <!-- CATALOGO -->
   <section class="view" id="view-catalogo">
+    <div class="threshold-note" style="border-color:var(--accent);">
+      <b>➕ Agregar material nuevo al catálogo</b>
+      <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+        <input type="text" id="nuevoDesc" placeholder="Nombre del material (ej. PVC Elbow 45° 1&quot;)" autocomplete="off">
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="nuevoCat" list="catExistentes" placeholder="Categoría (existente o nueva)" autocomplete="off" style="flex:2;">
+          <datalist id="catExistentes"></datalist>
+          <select id="nuevoUnit" style="flex:1; background:var(--surface-2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px 8px; font-family:'IBM Plex Sans',sans-serif; font-size:14px;">
+            <option value="ea">ea</option>
+            <option value="lf">lf</option>
+            <option value="box">box</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btnAgregarItem">Agregar al catálogo</button>
+      </div>
+      <div class="hint" id="nuevoItemResultado"></div>
+    </div>
     <div class="threshold-note">
       <b>Cargar mínimos de inventario.</b> Pega la lista acordada (una pieza por línea: <span class="mono">número, mínimo</span> — por ejemplo <span class="mono">45, 20</span>) o sube un archivo CSV con esas dos columnas. Los mínimos se aplican de una vez a todo el catálogo y se suben a la base de datos.
       <textarea id="minimosPaste" placeholder="45, 20&#10;69, 10&#10;124, 6" style="width:100%; min-height:90px; margin-top:10px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px 12px; font-family:'IBM Plex Mono',monospace; font-size:13px; resize:vertical;"></textarea>
@@ -599,12 +616,17 @@ input:focus{outline:none; border-color:var(--accent);}
 (function(){
   "use strict";
 
-  const CATALOG = JSON.parse(document.getElementById('catalog-data').textContent);
-  const byNo = {};
-  CATALOG.forEach(it => byNo[it.item_no] = it);
-  const byDesc = {};
-  CATALOG.forEach(it => byDesc[it.description.trim().toLowerCase()] = it);
-  const CATEGORIES = [...new Set(CATALOG.map(i => i.category))];
+  let CATALOG = JSON.parse(document.getElementById('catalog-data').textContent);
+  let byNo = {};
+  let byDesc = {};
+  let CATEGORIES = [];
+  function reindexCatalog(){
+    byNo = {};
+    byDesc = {};
+    CATALOG.forEach(it => { byNo[it.item_no] = it; byDesc[it.description.trim().toLowerCase()] = it; });
+    CATEGORIES = [...new Set(CATALOG.map(i => i.category))];
+  }
+  reindexCatalog();
 
   // Reconoce: "45", "CEWRI-45", el nombre exacto de la pieza, o un nombre parcial inequívoco
   function resolveItem(raw){
@@ -842,6 +864,15 @@ input:focus{outline:none; border-color:var(--accent);}
       chip.onclick = ()=>{ activeCatFilter=c; renderCatChips(); renderCatalog(); };
       box.appendChild(chip);
     });
+    const dl = $('#catExistentes');
+    if(dl){
+      dl.innerHTML = '';
+      CATEGORIES.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        dl.appendChild(opt);
+      });
+    }
   }
 
   function renderCatalog(){
@@ -1736,14 +1767,78 @@ input:focus{outline:none; border-color:var(--accent);}
     showToast('Requisición descargada ✓');
   };
 
+  // ---------- ítems agregados desde la página (se guardan aparte y se fusionan al catálogo base) ----------
+  let customItems = [];
+  async function cargarItemsPersonalizados(){
+    try{
+      const v = await store.get('cewri-customitems');
+      customItems = v ? JSON.parse(v) : [];
+    }catch(e){ customItems = []; }
+    if(customItems.length){
+      CATALOG = CATALOG.concat(customItems);
+      reindexCatalog();
+    }
+  }
+  async function guardarItemsPersonalizados(){
+    try{ await store.set('cewri-customitems', JSON.stringify(customItems)); }catch(e){ console.error(e); }
+  }
+  function siguienteNumeroLibre(){
+    return CATALOG.reduce((max, it) => Math.max(max, it.item_no), 0) + 1;
+  }
+  // agrega un ítem nuevo al catálogo (local + servidor). Devuelve {ok, error, item}
+  async function agregarItemCatalogo({ description, category, unit }){
+    const desc = String(description || '').trim();
+    const cat = String(category || '').trim();
+    const un = String(unit || 'ea').trim() || 'ea';
+    if(!desc) return { ok:false, error:'Escribe una descripción.' };
+    if(!cat) return { ok:false, error:'Escribe o elige una categoría.' };
+    if(byDesc[desc.toLowerCase()]){
+      return { ok:false, error:'Ya existe una pieza con ese nombre exacto (#' + byDesc[desc.toLowerCase()].item_no + ').' };
+    }
+    const item_no = siguienteNumeroLibre();
+    const nuevo = { category: cat, item_no, description: desc, unit: un };
+    customItems.push(nuevo);
+    CATALOG.push(nuevo);
+    reindexCatalog();
+    await guardarItemsPersonalizados();
+    await enqueue({ action:'newitem', itemNo: item_no, description: desc, unit: un });
+    return { ok:true, item: nuevo };
+  }
+
+  $('#btnAgregarItem').onclick = async ()=>{
+    const btn = $('#btnAgregarItem');
+    const res = $('#nuevoItemResultado');
+    btn.disabled = true;
+    const r = await agregarItemCatalogo({
+      description: $('#nuevoDesc').value,
+      category: $('#nuevoCat').value,
+      unit: $('#nuevoUnit').value
+    });
+    btn.disabled = false;
+    if(!r.ok){
+      res.style.color = 'var(--warn)';
+      res.textContent = '⚠ ' + r.error;
+      return;
+    }
+    res.style.color = 'var(--ok)';
+    res.textContent = '✓ Agregado como #' + r.item.item_no + ' — ' + r.item.description;
+    $('#nuevoDesc').value = '';
+    $('#nuevoCat').value = '';
+    renderCatChips();
+    renderCatalog();
+    renderLabelChips();
+    showToast('Material agregado ✓');
+  };
+
   // ---------- respaldo exportar/importar ----------
   $('#btnExport').onclick = ()=>{
     const payload = {
       app: 'inventario-cewri',
-      version: 2,
+      version: 3,
       exported: new Date().toISOString(),
       stock, movements,
-      porCasa, casasRestantes
+      porCasa, casasRestantes,
+      customItems
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
     const a = document.createElement('a');
@@ -1774,6 +1869,14 @@ input:focus{outline:none; border-color:var(--accent);}
         movements = data.movements;
         if(data.porCasa){ porCasa = data.porCasa; }
         if(data.casasRestantes !== undefined){ casasRestantes = parseInt(data.casasRestantes) || 0; $('#casasInput').value = casasRestantes || ''; }
+        if(Array.isArray(data.customItems)){
+          // reconstruye el catálogo: base original (sin los custom viejos) + los del respaldo
+          const baseSinCustom = CATALOG.filter(it => !customItems.some(ci => ci.item_no === it.item_no));
+          customItems = data.customItems;
+          CATALOG = baseSinCustom.concat(customItems);
+          reindexCatalog();
+          await guardarItemsPersonalizados();
+        }
         await guardarRequisicion();
         await saveStock();
         await saveMovements();
@@ -1794,6 +1897,7 @@ input:focus{outline:none; border-color:var(--accent);}
   (async function init(){
     await loadOutbox();
     await cargarRequisicion();
+    await cargarItemsPersonalizados();
 
     // 1) Leer parámetros del enlace (QR escaneado con la cámara del celular)
     let paramItem = null;
