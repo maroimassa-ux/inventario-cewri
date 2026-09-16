@@ -436,6 +436,17 @@ input:focus{outline:none; border-color:var(--accent);}
       <input type="file" id="cajasFile" accept=".csv,text/csv,text/plain" style="display:none;">
       <div class="hint" id="cajasResultado"></div>
     </div>
+    <div class="threshold-note" style="border-color:var(--warn);">
+      <b>⚠ Registrar conteo físico inicial.</b> Para materiales que muestran 0 pero en realidad tienen más salidas registradas que entradas — significa que nunca se anotó cuánto había al empezar. Cuenta el material físicamente y pégalo aquí como <span class="mono">número, cantidad contada</span> (ej. <span class="mono">2, 40</span>). Se registra como una <b>entrada</b> especial marcada "Conteo inicial", nunca reemplaza el historial — solo lo completa.
+      <input type="text" id="conteoPor" placeholder="¿Quién contó? (opcional)" autocomplete="off" style="margin-top:10px;">
+      <textarea id="conteoPaste" placeholder="2, 40&#10;3, 35&#10;245, 60" style="width:100%; min-height:70px; margin-top:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px 12px; font-family:'IBM Plex Mono',monospace; font-size:13px; resize:vertical;"></textarea>
+      <div style="margin-top:8px; display:flex; gap:8px;">
+        <button class="btn btn-primary" id="btnAplicarConteo">Registrar conteo inicial</button>
+        <button class="btn btn-secondary" id="btnConteoCsv">Subir CSV</button>
+      </div>
+      <input type="file" id="conteoFile" accept=".csv,text/csv,text/plain" style="display:none;">
+      <div class="hint" id="conteoResultado"></div>
+    </div>
     <div class="search-bar">
       <input type="text" id="catSearch" placeholder="Buscar material…">
     </div>
@@ -463,6 +474,13 @@ input:focus{outline:none; border-color:var(--accent);}
         <button class="btn btn-secondary" id="btnImport">⬆ Importar respaldo</button>
       </div>
       <input type="file" id="importFile" accept=".json,application/json" style="display:none;">
+    </div>
+    <div class="threshold-note">
+      <b>Historial completo.</b> El día a día muestra los últimos 2000 movimientos para que la app cargue rápido. Para revisar o auditar todo el historial desde el inicio, descárgalo aparte — no reemplaza lo que ves en pantalla, es solo para consulta.
+      <div style="margin-top:10px;">
+        <button class="btn btn-secondary" id="btnHistorialCompleto">⬇ Descargar historial completo (CSV)</button>
+      </div>
+      <div class="hint" id="historialCompletoResultado"></div>
     </div>
     <div class="section-title">Historial completo</div>
     <div id="allMoves"></div>
@@ -549,7 +567,34 @@ input:focus{outline:none; border-color:var(--accent);}
         <div class="modal-item-desc" id="mDesc">—</div>
         <div class="modal-item-meta" id="mMeta">—</div>
       </div>
-      <button class="x" id="mClose">✕</button>
+      <div style="display:flex; align-items:flex-start; gap:6px;">
+        <button class="x" id="mEditToggle" title="Editar este material" style="font-size:15px;">✎</button>
+        <button class="x" id="mClose">✕</button>
+      </div>
+    </div>
+
+    <div id="editBox" style="display:none; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:14px;">
+      <div class="field" style="margin-bottom:10px;">
+        <label>Nombre del material</label>
+        <input type="text" id="editDesc">
+      </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>Categoría</label>
+        <input type="text" id="editCat" list="catExistentes">
+      </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>Unidad</label>
+        <select id="editUnit" style="width:100%; background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:9px 8px;">
+          <option value="ea">ea</option>
+          <option value="lf">lf</option>
+          <option value="box">box</option>
+        </select>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-primary" id="btnGuardarEdicion" style="flex:1;">Guardar cambios</button>
+        <button class="btn btn-danger" id="btnEliminarItem">🗑 Eliminar material</button>
+      </div>
+      <div class="hint" id="editResultado"></div>
     </div>
 
     <div class="action-toggle">
@@ -616,17 +661,26 @@ input:focus{outline:none; border-color:var(--accent);}
 (function(){
   "use strict";
 
-  let CATALOG = JSON.parse(document.getElementById('catalog-data').textContent);
+  const CATALOG_BASE = JSON.parse(document.getElementById('catalog-data').textContent);
+  let CATALOG = [];
   let byNo = {};
   let byDesc = {};
   let CATEGORIES = [];
+  let itemOverrides = {};   // { item_no: {description?, category?, unit?} } — ediciones desde la app
+  let deletedItemNos = new Set(); // ítems eliminados desde la app (no se muestran, no se borra su historial)
+
   function reindexCatalog(){
+    CATALOG = CATALOG_BASE.concat(customItems)
+      .filter(it => !deletedItemNos.has(it.item_no))
+      .map(it => {
+        const ov = itemOverrides[it.item_no];
+        return ov ? Object.assign({}, it, ov) : it;
+      });
     byNo = {};
     byDesc = {};
     CATALOG.forEach(it => { byNo[it.item_no] = it; byDesc[it.description.trim().toLowerCase()] = it; });
     CATEGORIES = [...new Set(CATALOG.map(i => i.category))];
   }
-  reindexCatalog();
 
   // Reconoce: "45", "CEWRI-45", el nombre exacto de la pieza, o un nombre parcial inequívoco
   function resolveItem(raw){
@@ -840,8 +894,34 @@ input:focus{outline:none; border-color:var(--accent);}
         <div class="desc">${it ? escapeHtml(it.description) : 'Ítem #'+m.itemNo}</div>
         <div class="meta">${timeStr}${m.caso ? ' · '+escapeHtml(m.caso) : ''}${m.persona ? ' · '+escapeHtml(m.persona) : ''}${esFaltante ? ' · faltante reportado' : ''}</div>
       </div>
-      ${qtyHtml}`;
+      ${qtyHtml}
+      <button class="btn btn-secondary" data-del-mov="${m.id}" title="Eliminar este movimiento" style="padding:5px 9px; margin-left:6px; flex:0 0 auto;">🗑</button>`;
+    row.querySelector('[data-del-mov]').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      eliminarMovimiento(m);
+    });
     return row;
+  }
+
+  async function eliminarMovimiento(m){
+    const it = byNo[m.itemNo];
+    const nombre = it ? it.description : ('Ítem #' + m.itemNo);
+    if(!confirm(`¿Eliminar este movimiento?\n\n${nombre}\n${m.type} de ${m.qty}${m.caso ? ' · '+m.caso : ''}\n\nSi tiene efecto en el inventario, se revertirá automáticamente. Esta acción no se puede deshacer desde la app.`)){
+      return;
+    }
+    // revertir el efecto en el stock local (entrada sumó -> se resta; salida restó -> se devuelve)
+    if(it){
+      const s = getStock(it.item_no);
+      if(m.type === 'entrada') s.qty = Math.max(0, s.qty - m.qty);
+      else if(m.type === 'salida') s.qty = s.qty + m.qty;
+      stock[it.item_no] = s;
+    }
+    movements = movements.filter(x => x.id !== m.id);
+    await saveStock();
+    await saveMovements();
+    await enqueue({ action:'deletemovement', id: m.id, itemNo: m.itemNo, type: m.type, qty: m.qty });
+    renderAll();
+    showToast('Movimiento eliminado ✓');
   }
 
   function escapeHtml(s){
@@ -1016,6 +1096,11 @@ input:focus{outline:none; border-color:var(--accent);}
     $('#cajaToggle').checked = false;
     actualizarCajaPreview();
     setModalMode('salida');
+    $('#editBox').style.display = 'none';
+    $('#editResultado').textContent = '';
+    $('#editDesc').value = it.description;
+    $('#editCat').value = it.category;
+    $('#editUnit').value = it.unit;
     $('#modalOverlay').classList.add('show');
   }
   function closeModal(){
@@ -1035,6 +1120,57 @@ input:focus{outline:none; border-color:var(--accent);}
   $('#btnSalida').onclick = ()=> setModalMode('salida');
   $('#mClose').onclick = ()=>{ quickChainMode=false; closeModal(); };
   $('#mCancel').onclick = ()=>{ quickChainMode=false; closeModal(); };
+
+  $('#mEditToggle').onclick = ()=>{
+    const box = $('#editBox');
+    box.style.display = box.style.display==='none' ? 'block' : 'none';
+  };
+
+  $('#btnGuardarEdicion').onclick = async ()=>{
+    if(!currentModalItem) return;
+    const btn = $('#btnGuardarEdicion');
+    const res = $('#editResultado');
+    btn.disabled = true;
+    const r = await editarItemCatalogo(currentModalItem.item_no, {
+      description: $('#editDesc').value,
+      category: $('#editCat').value,
+      unit: $('#editUnit').value
+    });
+    btn.disabled = false;
+    if(!r.ok){
+      res.style.color = 'var(--warn)';
+      res.textContent = '⚠ ' + r.error;
+      return;
+    }
+    currentModalItem = byNo[currentModalItem.item_no]; // refleja el ítem ya actualizado
+    $('#mDesc').textContent = currentModalItem.description;
+    $('#mMeta').textContent = currentModalItem.category + ' · unidad: ' + currentModalItem.unit;
+    res.style.color = 'var(--ok)';
+    res.textContent = '✓ Guardado.';
+    renderCatChips();
+    renderCatalog();
+    renderLabelChips();
+    showToast('Material actualizado ✓');
+  };
+
+  $('#btnEliminarItem').onclick = async ()=>{
+    if(!currentModalItem) return;
+    const it = currentModalItem;
+    const s = getStock(it.item_no);
+    const advertencia = s.qty > 0
+      ? `Este material todavía tiene ${s.qty} ${it.unit} en el sistema. `
+      : '';
+    if(!confirm(advertencia + `¿Eliminar "${it.description}" (#${it.item_no}) del catálogo? Su historial de movimientos NO se borra, solo dejará de aparecer en el catálogo activo. Esta acción no se puede deshacer desde la app.`)){
+      return;
+    }
+    await eliminarItemCatalogo(it.item_no);
+    closeModal();
+    renderCatChips();
+    renderCatalog();
+    renderLabelChips();
+    renderAll();
+    showToast('Material eliminado del catálogo ✓');
+  };
   $('#qtyMinus').onclick = ()=>{ const i=$('#qtyInput'); i.value = Math.max(1, (parseInt(i.value)||1)-1); };
   $('#qtyPlus').onclick = ()=>{ const i=$('#qtyInput'); i.value = (parseInt(i.value)||1)+1; };
 
@@ -1095,12 +1231,11 @@ input:focus{outline:none; border-color:var(--accent);}
     } else if(tipo==='salida'){
       stock[no].qty = Math.max(0, stock[no].qty - qty);
     }
-    const conContexto = (tipo==='salida' || tipo==='faltante');
     const mv = {
       id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
       itemNo: no, type: tipo, qty,
-      caso: conContexto ? caso : null,
-      persona: conContexto ? persona : null,
+      caso: caso || null,
+      persona: persona || null,
       ts: new Date().toISOString()
     };
     movements.push(mv);
@@ -1307,6 +1442,12 @@ input:focus{outline:none; border-color:var(--accent);}
     if(!r.ok) throw new Error('HTTP ' + r.status);
     return r.json();
   }
+  async function apiGetFullHistory(){
+    const u = backendUrl + (backendUrl.includes('?') ? '&' : '?') + 'action=fullhistory&key=' + encodeURIComponent(backendKey);
+    const r = await fetch(u, { method:'GET' });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
   async function apiPost(body){
     // Content-Type text/plain evita el preflight CORS que Apps Script no maneja
     // La clave se agrega al momento de enviar (no se guarda dentro de la cola)
@@ -1391,6 +1532,37 @@ input:focus{outline:none; border-color:var(--accent);}
         movements = state.movements || [];
         await store.set('cewri-stock', JSON.stringify(stock));
         await store.set('cewri-movements', JSON.stringify(movements));
+        // fusionar ediciones y eliminaciones que otros dispositivos hayan hecho al catálogo
+        let catalogoCambio = false;
+        if(state.itemInfo){
+          Object.keys(state.itemInfo).forEach(noStr => {
+            const no = parseInt(noStr);
+            const info = state.itemInfo[noStr];
+            const base = byNo[no];
+            if(!base) return; // ítem que la app todavía no conoce localmente (raro, se resuelve en próxima carga)
+            const actual = itemOverrides[no] || {};
+            const nuevo = {
+              description: info.description || actual.description || base.description,
+              category: info.category || actual.category || base.category,
+              unit: info.unit || actual.unit || base.unit
+            };
+            const sinCambio = base.description===nuevo.description && base.category===nuevo.category && base.unit===nuevo.unit;
+            if(!sinCambio){
+              itemOverrides[no] = nuevo;
+              catalogoCambio = true;
+            }
+          });
+        }
+        if(Array.isArray(state.deletedItems)){
+          state.deletedItems.forEach(no => {
+            if(!deletedItemNos.has(no)){ deletedItemNos.add(no); catalogoCambio = true; }
+          });
+        }
+        if(catalogoCambio){
+          await guardarOverrides();
+          await guardarEliminados();
+          reindexCatalog();
+        }
         renderAll();
       }
       setSyncStatus('✓ Conectado y sincronizado — ' + new Date().toLocaleTimeString('es-PR', {hour:'2-digit', minute:'2-digit'}), 'var(--ok)');
@@ -1494,6 +1666,46 @@ input:focus{outline:none; border-color:var(--accent);}
     if(!file) return;
     const reader = new FileReader();
     reader.onload = ()=> aplicarCajas(reader.result);
+    reader.readAsText(file);
+  });
+
+  // ---------- conteo físico inicial (registra entradas de calibración) ----------
+  async function aplicarConteoInicial(texto, contadoPor){
+    const lineas = String(texto || '').split(/\r?\n/).map(l => l.trim()).filter(l => l);
+    let aplicados = 0;
+    const fallidas = [];
+    for(const linea of lineas){
+      const partes = linea.split(/[,;\t]+/).map(p => p.trim()).filter(p => p !== '');
+      if(partes.length < 2){ fallidas.push(linea); continue; }
+      const cantTxt = partes[partes.length - 1];
+      const idTxt = partes.slice(0, partes.length - 1).join(', ');
+      const cant = parseInt(cantTxt);
+      const it = resolveItem(idTxt);
+      if(!it || isNaN(cant) || cant < 0){ fallidas.push(linea); continue; }
+      await aplicarMovimiento(it, 'entrada', cant, 'Conteo inicial', contadoPor || null);
+      aplicados++;
+    }
+    await saveStock();
+    await saveMovements();
+    renderAll();
+    const res = $('#conteoResultado');
+    let msg = '✓ ' + aplicados + ' conteo(s) registrados como entrada "Conteo inicial".';
+    if(fallidas.length){
+      msg += ' ⚠ ' + fallidas.length + ' línea(s) no reconocida(s): ' + fallidas.slice(0,3).join(' | ') + (fallidas.length>3 ? '…' : '');
+      res.style.color = 'var(--warn)';
+    } else {
+      res.style.color = 'var(--ok)';
+    }
+    res.textContent = msg;
+  }
+  $('#btnAplicarConteo').onclick = ()=> aplicarConteoInicial($('#conteoPaste').value, $('#conteoPor').value.trim());
+  $('#btnConteoCsv').onclick = ()=> $('#conteoFile').click();
+  $('#conteoFile').addEventListener('change', function(){
+    const file = this.files && this.files[0];
+    this.value = '';
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=> aplicarConteoInicial(reader.result, $('#conteoPor').value.trim());
     reader.readAsText(file);
   });
 
@@ -1767,23 +1979,35 @@ input:focus{outline:none; border-color:var(--accent);}
     showToast('Requisición descargada ✓');
   };
 
-  // ---------- ítems agregados desde la página (se guardan aparte y se fusionan al catálogo base) ----------
+  // ---------- ítems agregados, editados o eliminados desde la página ----------
   let customItems = [];
   async function cargarItemsPersonalizados(){
     try{
       const v = await store.get('cewri-customitems');
       customItems = v ? JSON.parse(v) : [];
     }catch(e){ customItems = []; }
-    if(customItems.length){
-      CATALOG = CATALOG.concat(customItems);
-      reindexCatalog();
-    }
   }
   async function guardarItemsPersonalizados(){
     try{ await store.set('cewri-customitems', JSON.stringify(customItems)); }catch(e){ console.error(e); }
   }
+  async function cargarOverridesYEliminados(){
+    try{
+      const v = await store.get('cewri-itemoverrides');
+      itemOverrides = v ? JSON.parse(v) : {};
+    }catch(e){ itemOverrides = {}; }
+    try{
+      const v = await store.get('cewri-deleteditems');
+      deletedItemNos = new Set(v ? JSON.parse(v) : []);
+    }catch(e){ deletedItemNos = new Set(); }
+  }
+  async function guardarOverrides(){
+    try{ await store.set('cewri-itemoverrides', JSON.stringify(itemOverrides)); }catch(e){ console.error(e); }
+  }
+  async function guardarEliminados(){
+    try{ await store.set('cewri-deleteditems', JSON.stringify([...deletedItemNos])); }catch(e){ console.error(e); }
+  }
   function siguienteNumeroLibre(){
-    return CATALOG.reduce((max, it) => Math.max(max, it.item_no), 0) + 1;
+    return CATALOG_BASE.concat(customItems).reduce((max, it) => Math.max(max, it.item_no), 0) + 1;
   }
   // agrega un ítem nuevo al catálogo (local + servidor). Devuelve {ok, error, item}
   async function agregarItemCatalogo({ description, category, unit }){
@@ -1798,11 +2022,37 @@ input:focus{outline:none; border-color:var(--accent);}
     const item_no = siguienteNumeroLibre();
     const nuevo = { category: cat, item_no, description: desc, unit: un };
     customItems.push(nuevo);
-    CATALOG.push(nuevo);
     reindexCatalog();
     await guardarItemsPersonalizados();
-    await enqueue({ action:'newitem', itemNo: item_no, description: desc, unit: un });
+    await enqueue({ action:'newitem', itemNo: item_no, description: desc, category: cat, unit: un });
     return { ok:true, item: nuevo };
+  }
+
+  // edita nombre/categoría/unidad de cualquier ítem (base o personalizado)
+  async function editarItemCatalogo(item_no, { description, category, unit }){
+    const desc = String(description || '').trim();
+    const cat = String(category || '').trim();
+    const un = String(unit || '').trim();
+    if(!desc) return { ok:false, error:'Escribe una descripción.' };
+    if(!cat) return { ok:false, error:'Escribe o elige una categoría.' };
+    const dup = byDesc[desc.toLowerCase()];
+    if(dup && dup.item_no !== item_no){
+      return { ok:false, error:'Ya existe otra pieza con ese nombre exacto (#' + dup.item_no + ').' };
+    }
+    itemOverrides[item_no] = { description: desc, category: cat, unit: un || 'ea' };
+    reindexCatalog();
+    await guardarOverrides();
+    await enqueue({ action:'edititem', itemNo: item_no, description: desc, category: cat, unit: un || 'ea' });
+    return { ok:true };
+  }
+
+  // elimina un ítem del catálogo (no borra su historial de movimientos)
+  async function eliminarItemCatalogo(item_no){
+    deletedItemNos.add(item_no);
+    reindexCatalog();
+    await guardarEliminados();
+    await enqueue({ action:'deleteitem', itemNo: item_no });
+    return { ok:true };
   }
 
   $('#btnAgregarItem').onclick = async ()=>{
@@ -1893,11 +2143,52 @@ input:focus{outline:none; border-color:var(--accent);}
     reader.readAsText(file);
   });
 
+  // ---------- historial completo (consulta puntual, sin límite de 2000) ----------
+  $('#btnHistorialCompleto').onclick = async ()=>{
+    const btn = $('#btnHistorialCompleto');
+    const res = $('#historialCompletoResultado');
+    if(!backendUrl || !backendKey){
+      res.style.color = 'var(--warn)';
+      res.textContent = 'Conecta la base de datos primero (arriba en esta misma pestaña).';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Descargando…';
+    res.textContent = '';
+    try{
+      const data = await apiGetFullHistory();
+      if(!data || data.ok !== true) throw new Error(data && data.error ? data.error : 'respuesta inválida');
+      const movs = data.movements || [];
+      const enc = 'fecha,item_no,descripcion,tipo,cantidad,caso,persona,unidad';
+      const esc = v => '"' + String(v==null?'':v).replace(/"/g,'""') + '"';
+      const lineas = movs.map(m => [esc(m.ts), m.itemNo, esc(m.description), m.type, m.qty, esc(m.caso), esc(m.persona), esc(m.unit)].join(','));
+      const blob = new Blob([enc + '\n' + lineas.join('\n')], {type:'text/csv;charset=utf-8'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'historial-completo-cewri-' + new Date().toISOString().slice(0,10) + '.csv';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      res.style.color = 'var(--ok)';
+      res.textContent = '✓ ' + movs.length + ' movimientos descargados (historial completo desde el inicio).';
+      showToast('Historial completo descargado ✓');
+    }catch(e){
+      console.error(e);
+      res.style.color = 'var(--warn)';
+      res.textContent = '⚠ No se pudo descargar: ' + e.message;
+    }finally{
+      btn.disabled = false;
+      btn.textContent = '⬇ Descargar historial completo (CSV)';
+    }
+  };
+
   // ---------- init ----------
   (async function init(){
     await loadOutbox();
     await cargarRequisicion();
     await cargarItemsPersonalizados();
+    await cargarOverridesYEliminados();
+    reindexCatalog(); // primera construcción del catálogo efectivo (base + personalizados - eliminados + ediciones)
 
     // 1) Leer parámetros del enlace (QR escaneado con la cámara del celular)
     let paramItem = null;
