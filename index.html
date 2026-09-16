@@ -1672,37 +1672,17 @@ input:focus{outline:none; border-color:var(--accent);}
   // ---------- conteo físico inicial (registra entradas de calibración) ----------
   async function aplicarConteoInicial(texto, contadoPor){
     const res = $('#conteoResultado');
-    // refresca el stock local contra el servidor ANTES de calcular ajustes —
-    // sin esto, un dispositivo con caché vieja calcularía la diferencia contra
-    // un número que ya no es el real, y el "ajuste" saldría mal
-    if(backendUrl && backendKey){
-      res.style.color = 'var(--text-muted)';
-      res.textContent = 'Actualizando desde la base de datos antes de ajustar…';
-      try{
-        const fresco = await apiGetState();
-        if(fresco && fresco.ok === true && fresco.stock){
-          stock = fresco.stock;
-          await store.set('cewri-stock', JSON.stringify(stock));
-        } else {
-          res.style.color = 'var(--warn)';
-          res.textContent = '⚠ No se pudo confirmar el número más reciente del servidor — no se aplicó ningún ajuste. Verifica tu conexión e inténtalo de nuevo.';
-          return;
-        }
-      }catch(e){
-        console.error(e);
-        res.style.color = 'var(--warn)';
-        res.textContent = '⚠ No se pudo conectar con el servidor — no se aplicó ningún ajuste. Verifica tu conexión e inténtalo de nuevo.';
-        return;
-      }
-    } else {
+    if(!backendUrl || !backendKey){
       res.style.color = 'var(--warn)';
-      res.textContent = '⚠ No hay conexión a la base configurada — conecta primero en la pestaña Movimientos antes de ajustar.';
+      res.textContent = '⚠ Conecta la base de datos primero (pestaña Movimientos) — este ajuste necesita al servidor para calcular la diferencia de forma segura.';
       return;
     }
     const lineas = String(texto || '').split(/\r?\n/).map(l => l.trim()).filter(l => l);
-    let ajustados = 0, sinCambio = 0;
+    let ajustados = 0, sinCambio = 0, enCola = 0;
     const fallidas = [];
-    for(const linea of lineas){
+    res.style.color = 'var(--text-muted)';
+    for(let i=0; i<lineas.length; i++){
+      const linea = lineas[i];
       const partes = linea.split(/[,;\t]+/).map(p => p.trim()).filter(p => p !== '');
       if(partes.length < 2){ fallidas.push(linea); continue; }
       const cantTxt = partes[partes.length - 1];
@@ -1710,23 +1690,44 @@ input:focus{outline:none; border-color:var(--accent);}
       const cant = parseInt(cantTxt);
       const it = resolveItem(idTxt);
       if(!it || isNaN(cant) || cant < 0){ fallidas.push(linea); continue; }
-      // ajusta al número EXACTO contado, en vez de sumarlo — así registrar el mismo
-      // conteo dos veces por accidente no duplica nada (la segunda vez, diferencia = 0)
-      const actual = getStock(it.item_no).qty;
-      const delta = cant - actual;
-      if(delta === 0){ sinCambio++; continue; }
-      if(delta > 0){
-        await aplicarMovimiento(it, 'entrada', delta, 'Conteo inicial', contadoPor || null);
-      } else {
-        await aplicarMovimiento(it, 'salida', Math.abs(delta), 'Conteo inicial (ajuste)', contadoPor || null);
+      res.textContent = 'Ajustando ' + (i+1) + ' de ' + lineas.length + '…';
+      const payload = {
+        action: 'setexact', itemNo: it.item_no, qty: cant,
+        description: it.description, category: it.category, unit: it.unit,
+        caso: 'Conteo inicial', persona: contadoPor || null,
+        id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
+        ts: new Date().toISOString()
+      };
+      try{
+        // se envía directo al servidor (no por la cola) para que el cálculo de la
+        // diferencia ocurra AHÍ, protegido por su candado — así dos dispositivos
+        // ajustando al mismo tiempo nunca se pisan entre sí
+        const r = await apiPost(payload);
+        if(!r || r.ok !== true) throw new Error(r && r.error ? r.error : 'respuesta inválida');
+        if(!stock[it.item_no]) stock[it.item_no] = { qty:0, threshold:null };
+        stock[it.item_no].qty = cant; // el servidor ya confirmó que quedó en este número
+        if(r.delta){
+          movements.push({
+            id: payload.id, itemNo: it.item_no, type: r.delta>0?'entrada':'salida',
+            qty: Math.abs(r.delta), caso: 'Conteo inicial', persona: contadoPor || null, ts: payload.ts
+          });
+          ajustados++;
+        } else {
+          sinCambio++;
+        }
+      }catch(e){
+        console.error(e);
+        // si falla la conexión puntual, se encola para reintentar más tarde sin perder el dato
+        await enqueue(payload);
+        enCola++;
       }
-      ajustados++;
     }
     await saveStock();
     await saveMovements();
     renderAll();
     let msg = '✓ ' + ajustados + ' material(es) ajustado(s) al conteo exacto.';
-    if(sinCambio) msg += ' ' + sinCambio + ' ya estaban correctos (sin cambio).';
+    if(sinCambio) msg += ' ' + sinCambio + ' ya estaban correctos.';
+    if(enCola) msg += ' ⚠ ' + enCola + ' quedaron en cola por falla de conexión (se reintentarán solos).';
     if(fallidas.length){
       msg += ' ⚠ ' + fallidas.length + ' línea(s) no reconocida(s): ' + fallidas.slice(0,3).join(' | ') + (fallidas.length>3 ? '…' : '');
       res.style.color = 'var(--warn)';
