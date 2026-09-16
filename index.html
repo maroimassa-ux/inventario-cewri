@@ -437,11 +437,11 @@ input:focus{outline:none; border-color:var(--accent);}
       <div class="hint" id="cajasResultado"></div>
     </div>
     <div class="threshold-note" style="border-color:var(--warn);">
-      <b>⚠ Registrar conteo físico inicial.</b> Para materiales que muestran 0 pero en realidad tienen más salidas registradas que entradas — significa que nunca se anotó cuánto había al empezar. Cuenta el material físicamente y pégalo aquí como <span class="mono">número, cantidad contada</span> (ej. <span class="mono">2, 40</span>). Se registra como una <b>entrada</b> especial marcada "Conteo inicial", nunca reemplaza el historial — solo lo completa.
+      <b>⚠ Registrar conteo físico.</b> Cuenta el material físicamente y pégalo aquí como <span class="mono">número, cantidad contada</span> (ej. <span class="mono">2, 40</span>). La app <b>ajusta el stock exactamente a ese número</b> — no lo suma. Si el sistema ya tenía 20 y cuentas 40, registra +20; si ya tenía 40 y vuelves a pegar el mismo conteo, no hace nada (es seguro repetirlo). El ajuste queda marcado como "Conteo inicial" en el historial, sin borrar nada de lo anterior.
       <input type="text" id="conteoPor" placeholder="¿Quién contó? (opcional)" autocomplete="off" style="margin-top:10px;">
       <textarea id="conteoPaste" placeholder="2, 40&#10;3, 35&#10;245, 60" style="width:100%; min-height:70px; margin-top:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px 12px; font-family:'IBM Plex Mono',monospace; font-size:13px; resize:vertical;"></textarea>
       <div style="margin-top:8px; display:flex; gap:8px;">
-        <button class="btn btn-primary" id="btnAplicarConteo">Registrar conteo inicial</button>
+        <button class="btn btn-primary" id="btnAplicarConteo">Ajustar al conteo exacto</button>
         <button class="btn btn-secondary" id="btnConteoCsv">Subir CSV</button>
       </div>
       <input type="file" id="conteoFile" accept=".csv,text/csv,text/plain" style="display:none;">
@@ -1672,7 +1672,7 @@ input:focus{outline:none; border-color:var(--accent);}
   // ---------- conteo físico inicial (registra entradas de calibración) ----------
   async function aplicarConteoInicial(texto, contadoPor){
     const lineas = String(texto || '').split(/\r?\n/).map(l => l.trim()).filter(l => l);
-    let aplicados = 0;
+    let ajustados = 0, sinCambio = 0;
     const fallidas = [];
     for(const linea of lineas){
       const partes = linea.split(/[,;\t]+/).map(p => p.trim()).filter(p => p !== '');
@@ -1682,14 +1682,24 @@ input:focus{outline:none; border-color:var(--accent);}
       const cant = parseInt(cantTxt);
       const it = resolveItem(idTxt);
       if(!it || isNaN(cant) || cant < 0){ fallidas.push(linea); continue; }
-      await aplicarMovimiento(it, 'entrada', cant, 'Conteo inicial', contadoPor || null);
-      aplicados++;
+      // ajusta al número EXACTO contado, en vez de sumarlo — así registrar el mismo
+      // conteo dos veces por accidente no duplica nada (la segunda vez, diferencia = 0)
+      const actual = getStock(it.item_no).qty;
+      const delta = cant - actual;
+      if(delta === 0){ sinCambio++; continue; }
+      if(delta > 0){
+        await aplicarMovimiento(it, 'entrada', delta, 'Conteo inicial', contadoPor || null);
+      } else {
+        await aplicarMovimiento(it, 'salida', Math.abs(delta), 'Conteo inicial (ajuste)', contadoPor || null);
+      }
+      ajustados++;
     }
     await saveStock();
     await saveMovements();
     renderAll();
     const res = $('#conteoResultado');
-    let msg = '✓ ' + aplicados + ' conteo(s) registrados como entrada "Conteo inicial".';
+    let msg = '✓ ' + ajustados + ' material(es) ajustado(s) al conteo exacto.';
+    if(sinCambio) msg += ' ' + sinCambio + ' ya estaban correctos (sin cambio).';
     if(fallidas.length){
       msg += ' ⚠ ' + fallidas.length + ' línea(s) no reconocida(s): ' + fallidas.slice(0,3).join(' | ') + (fallidas.length>3 ? '…' : '');
       res.style.color = 'var(--warn)';
