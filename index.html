@@ -1671,6 +1671,34 @@ input:focus{outline:none; border-color:var(--accent);}
 
   // ---------- conteo físico inicial (registra entradas de calibración) ----------
   async function aplicarConteoInicial(texto, contadoPor){
+    const res = $('#conteoResultado');
+    // refresca el stock local contra el servidor ANTES de calcular ajustes —
+    // sin esto, un dispositivo con caché vieja calcularía la diferencia contra
+    // un número que ya no es el real, y el "ajuste" saldría mal
+    if(backendUrl && backendKey){
+      res.style.color = 'var(--text-muted)';
+      res.textContent = 'Actualizando desde la base de datos antes de ajustar…';
+      try{
+        const fresco = await apiGetState();
+        if(fresco && fresco.ok === true && fresco.stock){
+          stock = fresco.stock;
+          await store.set('cewri-stock', JSON.stringify(stock));
+        } else {
+          res.style.color = 'var(--warn)';
+          res.textContent = '⚠ No se pudo confirmar el número más reciente del servidor — no se aplicó ningún ajuste. Verifica tu conexión e inténtalo de nuevo.';
+          return;
+        }
+      }catch(e){
+        console.error(e);
+        res.style.color = 'var(--warn)';
+        res.textContent = '⚠ No se pudo conectar con el servidor — no se aplicó ningún ajuste. Verifica tu conexión e inténtalo de nuevo.';
+        return;
+      }
+    } else {
+      res.style.color = 'var(--warn)';
+      res.textContent = '⚠ No hay conexión a la base configurada — conecta primero en la pestaña Movimientos antes de ajustar.';
+      return;
+    }
     const lineas = String(texto || '').split(/\r?\n/).map(l => l.trim()).filter(l => l);
     let ajustados = 0, sinCambio = 0;
     const fallidas = [];
@@ -1697,7 +1725,6 @@ input:focus{outline:none; border-color:var(--accent);}
     await saveStock();
     await saveMovements();
     renderAll();
-    const res = $('#conteoResultado');
     let msg = '✓ ' + ajustados + ' material(es) ajustado(s) al conteo exacto.';
     if(sinCambio) msg += ' ' + sinCambio + ' ya estaban correctos (sin cambio).';
     if(fallidas.length){
