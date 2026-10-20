@@ -974,7 +974,8 @@ input:focus{outline:none; border-color:var(--accent);}
       box.appendChild(more);
     }
   }
-  $('#catSearch').addEventListener('input', renderCatalog);
+  function debounce(fn, ms){ let t; return function(){ const a=arguments, c=this; clearTimeout(t); t=setTimeout(()=>fn.apply(c,a), ms); }; }
+  $('#catSearch').addEventListener('input', debounce(renderCatalog, 150));
 
   // ---------- render: movimientos ----------
   function renderMovements(){
@@ -1313,7 +1314,7 @@ input:focus{outline:none; border-color:var(--accent);}
   quickNum.addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); quickGo(); } });
 
   // ---------- manual search (Escanear tab) ----------
-  $('#manualSearch').addEventListener('input', function(){
+  $('#manualSearch').addEventListener('input', debounce(function(){
     const q = this.value.toLowerCase().trim();
     const box = $('#manualResults');
     box.innerHTML = '';
@@ -1321,7 +1322,7 @@ input:focus{outline:none; border-color:var(--accent);}
     const list = CATALOG.filter(i => i.description.toLowerCase().includes(q) || String(i.item_no).includes(q)).slice(0,8);
     if(list.length===0){ box.innerHTML = '<div class="empty-note">Sin resultados.</div>'; return; }
     list.forEach(it => box.appendChild(itemRow(it)));
-  });
+  }, 150));
 
   // ---------- QR scanning ----------
   let stream = null, scanLoopId = null;
@@ -1475,6 +1476,21 @@ input:focus{outline:none; border-color:var(--accent);}
     await saveOutbox();
     flushOutbox();
   }
+  async function remapItemNo(oldNo, newNo){
+    const it = customItems.find(c => c.item_no === oldNo);
+    if(it) it.item_no = newNo;
+    if(stock[oldNo]){ stock[newNo] = stock[oldNo]; delete stock[oldNo]; }
+    movements.forEach(m => { if(m.itemNo === oldNo) m.itemNo = newNo; });
+    outbox.forEach(o => {
+      if(o.itemNo === oldNo) o.itemNo = newNo;
+      if(o.movement && o.movement.itemNo === oldNo) o.movement.itemNo = newNo;
+      if(Array.isArray(o.items)) o.items.forEach(x => { if(x.itemNo === oldNo) x.itemNo = newNo; });
+    });
+    reindexCatalog();
+    await guardarItemsPersonalizados(); await saveStock(); await saveMovements();
+    renderAll();
+    showToast('Material renumerado: #' + oldNo + ' → #' + newNo);
+  }
   let flushing = false;
   async function flushOutbox(){
     if(flushing || !backendUrl || outbox.length===0) return;
@@ -1490,6 +1506,10 @@ input:focus{outline:none; border-color:var(--accent);}
           }
           throw new Error(res && res.error ? res.error : 'respuesta inválida');
         }
+        if(op.action==='newitem' && res.itemNo && parseInt(res.itemNo)!==parseInt(op.itemNo)){
+          // el número que se eligió aquí ya lo usaba otro material: el servidor asignó uno libre
+          await remapItemNo(parseInt(op.itemNo), parseInt(res.itemNo));
+        }
         outbox.shift();
         await saveOutbox();
       }
@@ -1503,6 +1523,56 @@ input:focus{outline:none; border-color:var(--accent);}
   }
   // reintento periódico de la cola
   setInterval(flushOutbox, 30000);
+  // al volver a la app (cambiar de pestaña/app en el celular) se actualiza desde el servidor, como máximo cada 20 s
+  let ultimaActualizacion = 0;
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState!=='visible' || !backendUrl || !backendKey) return;
+    if(Date.now()-ultimaActualizacion < 20000) return;
+    ultimaActualizacion = Date.now();
+    connectBackend(backendUrl, backendKey, {pull:true});
+  });
+
+  // Une al catálogo local lo que el servidor sabe: ítems creados en otros dispositivos,
+  // ediciones y eliminaciones. El servidor manda en nombre/categoría/unidad.
+  async function mergeServerCatalog(state){
+    let cambio = false, nuevosCustom = false;
+    const info = state.itemInfo || {};
+    Object.keys(info).forEach(noStr => {
+      const no = parseInt(noStr);
+      const i = info[noStr] || {};
+      if(isNaN(no)) return;
+      if(!byNo[no] && !deletedItemNos.has(no)){
+        // ítem creado en otro dispositivo: se agrega aquí
+        if(!i.description) return; // sin nombre no se puede mostrar
+        customItems.push({ category: i.category || 'Sin categoría', item_no: no, description: i.description, unit: i.unit || 'ea' });
+        nuevosCustom = true; cambio = true;
+        reindexCatalog();
+        return;
+      }
+      const base = byNo[no];
+      if(!base) return;
+      const actual = itemOverrides[no] || {};
+      const nuevo = {
+        description: i.description || actual.description || base.description,
+        category: i.category || actual.category || base.category,
+        unit: i.unit || actual.unit || base.unit
+      };
+      if(base.description!==nuevo.description || base.category!==nuevo.category || base.unit!==nuevo.unit){
+        itemOverrides[no] = nuevo; cambio = true;
+        reindexCatalog();
+      }
+    });
+    if(Array.isArray(state.deletedItems)){
+      state.deletedItems.forEach(no => { if(!deletedItemNos.has(no)){ deletedItemNos.add(no); cambio = true; } });
+    }
+    if(cambio){
+      reindexCatalog();
+      if(nuevosCustom) await guardarItemsPersonalizados();
+      await guardarOverrides();
+      await guardarEliminados();
+    }
+    return cambio;
+  }
 
   async function connectBackend(url, key, opts){
     const pull = !opts || opts.pull !== false;
@@ -1520,49 +1590,27 @@ input:focus{outline:none; border-color:var(--accent);}
     }
     setSyncStatus('Conectando…');
     try{
-      const state = await apiGetState();
+      let state = await apiGetState();
       if(state && state.ok !== true && state.error === 'clave incorrecta'){
         setSyncStatus('⚠ Clave de acceso incorrecta — verifícala con quien administra la base.', 'var(--warn)');
         return;
       }
       if(!state || state.ok !== true) throw new Error('respuesta inválida del servidor');
+      if(pull && outbox.length>0){
+        // hay registros locales sin enviar: se envían primero para que el servidor no pise lo que acabas de hacer
+        await flushOutbox();
+        if(outbox.length>0){ setSyncStatus('⚠ Hay '+outbox.length+' registro(s) por enviar — se reintentará antes de actualizar', 'var(--warn)'); return; }
+        state = await apiGetState();
+        if(!state || state.ok !== true) throw new Error('respuesta inválida del servidor');
+      }
       if(pull){
         // el servidor es la fuente de la verdad al conectar
         stock = state.stock || {};
         movements = state.movements || [];
         await store.set('cewri-stock', JSON.stringify(stock));
         await store.set('cewri-movements', JSON.stringify(movements));
-        // fusionar ediciones y eliminaciones que otros dispositivos hayan hecho al catálogo
-        let catalogoCambio = false;
-        if(state.itemInfo){
-          Object.keys(state.itemInfo).forEach(noStr => {
-            const no = parseInt(noStr);
-            const info = state.itemInfo[noStr];
-            const base = byNo[no];
-            if(!base) return; // ítem que la app todavía no conoce localmente (raro, se resuelve en próxima carga)
-            const actual = itemOverrides[no] || {};
-            const nuevo = {
-              description: info.description || actual.description || base.description,
-              category: info.category || actual.category || base.category,
-              unit: info.unit || actual.unit || base.unit
-            };
-            const sinCambio = base.description===nuevo.description && base.category===nuevo.category && base.unit===nuevo.unit;
-            if(!sinCambio){
-              itemOverrides[no] = nuevo;
-              catalogoCambio = true;
-            }
-          });
-        }
-        if(Array.isArray(state.deletedItems)){
-          state.deletedItems.forEach(no => {
-            if(!deletedItemNos.has(no)){ deletedItemNos.add(no); catalogoCambio = true; }
-          });
-        }
-        if(catalogoCambio){
-          await guardarOverrides();
-          await guardarEliminados();
-          reindexCatalog();
-        }
+        // fusionar ítems nuevos, ediciones y eliminaciones hechas desde otros dispositivos
+        await mergeServerCatalog(state);
         renderAll();
       }
       setSyncStatus('✓ Conectado y sincronizado — ' + new Date().toLocaleTimeString('es-PR', {hour:'2-digit', minute:'2-digit'}), 'var(--ok)');
@@ -2045,7 +2093,9 @@ input:focus{outline:none; border-color:var(--accent);}
     try{ await store.set('cewri-deleteditems', JSON.stringify([...deletedItemNos])); }catch(e){ console.error(e); }
   }
   function siguienteNumeroLibre(){
-    return CATALOG_BASE.concat(customItems).reduce((max, it) => Math.max(max, it.item_no), 0) + 1;
+    const maxCat = CATALOG_BASE.concat(customItems).reduce((max, it) => Math.max(max, it.item_no), 0);
+    const maxStock = Object.keys(stock).reduce((max, k) => Math.max(max, parseInt(k)||0), 0);
+    return Math.max(maxCat, maxStock) + 1;
   }
   // agrega un ítem nuevo al catálogo (local + servidor). Devuelve {ok, error, item}
   async function agregarItemCatalogo({ description, category, unit }){
@@ -2057,13 +2107,29 @@ input:focus{outline:none; border-color:var(--accent);}
     if(byDesc[desc.toLowerCase()]){
       return { ok:false, error:'Ya existe una pieza con ese nombre exacto (#' + byDesc[desc.toLowerCase()].item_no + ').' };
     }
+    // antes de elegir número, ponerse al día con el servidor (evita repetir un número creado en otro dispositivo)
+    if(backendUrl && backendKey){
+      try{
+        if(outbox.length>0) await flushOutbox();
+        const st = await Promise.race([apiGetState(), new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), 6000))]);
+        if(st && st.ok===true){
+          if(outbox.length===0){ stock = st.stock || stock; await store.set('cewri-stock', JSON.stringify(stock)); }
+          await mergeServerCatalog(st);
+          if(byDesc[desc.toLowerCase()]){
+            return { ok:false, error:'Ya existe una pieza con ese nombre exacto (#' + byDesc[desc.toLowerCase()].item_no + ').' };
+          }
+        }
+      }catch(e){ /* sin señal: se usa un número provisional y el servidor lo corrige al enviar */ }
+    }
     const item_no = siguienteNumeroLibre();
     const nuevo = { category: cat, item_no, description: desc, unit: un };
     customItems.push(nuevo);
     reindexCatalog();
     await guardarItemsPersonalizados();
     await enqueue({ action:'newitem', itemNo: item_no, description: desc, category: cat, unit: un });
-    return { ok:true, item: nuevo };
+    // si el envío fue inmediato, el número pudo cambiar: se devuelve el vigente
+    const vigente = customItems.find(c => c.description === desc) || nuevo;
+    return { ok:true, item: vigente };
   }
 
   // edita nombre/categoría/unidad de cualquier ítem (base o personalizado)
