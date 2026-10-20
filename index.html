@@ -358,6 +358,10 @@ input:focus{outline:none; border-color:var(--accent);}
       <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
         <input type="text" id="salidasPersona" placeholder="¿Quién se llevó el material? (ej. Erick)" autocomplete="off">
         <input type="text" id="salidasCasos" placeholder="Caso(s) PR-CI — separa con comas si son varios" autocomplete="off">
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--text); font-weight:400;">
+          <span>Fecha en que se llevó el material (déjala vacía si fue hoy)</span>
+          <input type="date" id="salidasFecha">
+        </label>
         <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text); cursor:pointer; font-weight:400;">
           <input type="checkbox" id="salidasEnCajas" style="width:auto;">
           <span>Las cantidades de esta hoja están en cajas, no en unidades</span>
@@ -1224,7 +1228,7 @@ input:focus{outline:none; border-color:var(--accent);}
 
   // aplica un movimiento (entrada/salida/faltante) al stock local y lo encola al servidor
   // 'faltante' = material que el instalador pidió y no había: se registra, NO descuenta stock
-  async function aplicarMovimiento(it, tipo, qty, caso, persona){
+  async function aplicarMovimiento(it, tipo, qty, caso, persona, fecha){
     const no = it.item_no;
     if(!stock[no]) stock[no] = { qty:0, threshold:null };
     if(tipo==='entrada'){
@@ -1237,7 +1241,7 @@ input:focus{outline:none; border-color:var(--accent);}
       itemNo: no, type: tipo, qty,
       caso: caso || null,
       persona: persona || null,
-      ts: new Date().toISOString()
+      ts: (fecha ? new Date(fecha + 'T12:00:00').toISOString() : new Date().toISOString())
     };
     movements.push(mv);
     await enqueue({ action:'movement', movement: Object.assign({description: it.description, unit: it.unit}, mv) });
@@ -1534,9 +1538,25 @@ input:focus{outline:none; border-color:var(--accent);}
 
   // Une al catálogo local lo que el servidor sabe: ítems creados en otros dispositivos,
   // ediciones y eliminaciones. El servidor manda en nombre/categoría/unidad.
-  async function mergeServerCatalog(state){
+  async function mergeServerCatalog(state, opts){
     let cambio = false, nuevosCustom = false;
+    const rescatados = [];
     const info = state.itemInfo || {};
+    if(opts && opts.purgar && Object.keys(info).length > 0){
+      // el servidor manda: se descartan ítems locales que el servidor no tiene (o que tienen otro nombre
+      // bajo ese número, restos de números repetidos) y las ediciones locales viejas; se reconstruyen desde el servidor
+      // Nada se pierde: un ítem local que el servidor no tiene (o que quedó con número repetido) se SUBE al
+      // servidor con un número libre, conservando su nombre, categoría y unidad.
+      customItems = customItems.filter(c => {
+        const i = info[c.item_no];
+        const igual = i && i.description && String(i.description).trim().toLowerCase() === String(c.description).trim().toLowerCase();
+        if(!igual) rescatados.push(c);
+        return igual;
+      });
+      if(rescatados.length){ nuevosCustom = true; cambio = true; }
+      if(Object.keys(itemOverrides).length){ itemOverrides = {}; cambio = true; }
+      reindexCatalog();
+    }
     Object.keys(info).forEach(noStr => {
       const no = parseInt(noStr);
       const i = info[noStr] || {};
@@ -1564,6 +1584,17 @@ input:focus{outline:none; border-color:var(--accent);}
     });
     if(Array.isArray(state.deletedItems)){
       state.deletedItems.forEach(no => { if(!deletedItemNos.has(no)){ deletedItemNos.add(no); cambio = true; } });
+    }
+    if(rescatados.length){
+      reindexCatalog();
+      for(const c of rescatados){
+        if(byDesc[String(c.description).trim().toLowerCase()]) continue; // el servidor ya lo tiene con ese nombre
+        const nuevoNo = siguienteNumeroLibre();
+        customItems.push({ category: c.category, item_no: nuevoNo, description: c.description, unit: c.unit });
+        reindexCatalog();
+        outbox.push({ action:'newitem', itemNo: nuevoNo, description: c.description, category: c.category, unit: c.unit });
+      }
+      await saveOutbox();
     }
     if(cambio){
       reindexCatalog();
@@ -1610,7 +1641,8 @@ input:focus{outline:none; border-color:var(--accent);}
         await store.set('cewri-stock', JSON.stringify(stock));
         await store.set('cewri-movements', JSON.stringify(movements));
         // fusionar ítems nuevos, ediciones y eliminaciones hechas desde otros dispositivos
-        await mergeServerCatalog(state);
+        await mergeServerCatalog(state, { purgar: true });
+        if(outbox.length>0) flushOutbox();
         renderAll();
       }
       setSyncStatus('✓ Conectado y sincronizado — ' + new Date().toLocaleTimeString('es-PR', {hour:'2-digit', minute:'2-digit'}), 'var(--ok)');
@@ -1798,6 +1830,10 @@ input:focus{outline:none; border-color:var(--accent);}
   // ---------- importar salidas de instalador (Excel) ----------
   let salidasParsed = null; // { registrables:[{it,qty}], backorders:[{it,bo,qty}], noReconocidos:[] }
 
+  // El formulario de los instaladores todavía usa los números viejos #85–#90 ("Sealtight Connector Right");
+  // en el catálogo actual esas piezas son "Non-Metallic Liquid Tight Connector Straight" (#334–#339).
+  const ALIAS_FORMULARIO = { 85:334, 86:335, 87:336, 88:337, 89:339, 90:338 };
+
   function parseSalidasWorkbook(wb, enCajas){
     const ws = wb.Sheets[wb.SheetNames[0]];
     const filas = XLSX.utils.sheet_to_json(ws, { header:1, defval:null });
@@ -1820,7 +1856,8 @@ input:focus{outline:none; border-color:var(--accent);}
           }
           return;
         }
-        const it = byNo[parseInt(no)];
+        const noReal = ALIAS_FORMULARIO[parseInt(no)] || parseInt(no);
+        const it = byNo[noReal];
         if(!it){
           if((typeof qty === 'number' && qty > 0) || (typeof bo === 'number' && bo > 0)){
             noReconocidos.push('#' + no + ' (no está en el catálogo)');
@@ -1905,6 +1942,7 @@ input:focus{outline:none; border-color:var(--accent);}
     if(!salidasParsed || (!salidasParsed.registrables.length && !salidasParsed.backorders.length)) return;
     const persona = $('#salidasPersona').value.trim();
     const casos = normalizarCasos($('#salidasCasos').value);
+    const fechaSalida = ($('#salidasFecha').value || '').trim();
     if(!persona){ showToast('Indica quién se llevó el material'); return; }
     if(!casos){ showToast('Ingresa al menos un caso PR-CI'); return; }
     const btn = $('#btnSalidasConfirm');
@@ -1912,10 +1950,10 @@ input:focus{outline:none; border-color:var(--accent);}
     btn.textContent = 'Registrando…';
     try{
       for(const r of salidasParsed.registrables){
-        await aplicarMovimiento(r.it, 'salida', r.qty, casos, persona);
+        await aplicarMovimiento(r.it, 'salida', r.qty, casos, persona, fechaSalida);
       }
       for(const b of salidasParsed.backorders){
-        await aplicarMovimiento(b.it, 'faltante', b.bo, casos, persona);
+        await aplicarMovimiento(b.it, 'faltante', b.bo, casos, persona, fechaSalida);
       }
       await saveStock();
       await saveMovements();
@@ -1924,6 +1962,7 @@ input:focus{outline:none; border-color:var(--accent);}
       salidasParsed = null;
       renderSalidasPreview();
       $('#salidasCasos').value = '';
+      $('#salidasFecha').value = '';
     }catch(e){
       console.error(e);
       showToast('Error al registrar — revisa Movimientos');
