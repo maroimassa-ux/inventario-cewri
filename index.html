@@ -1547,13 +1547,17 @@ input:focus{outline:none; border-color:var(--accent);}
       // bajo ese número, restos de números repetidos) y las ediciones locales viejas; se reconstruyen desde el servidor
       // Nada se pierde: un ítem local que el servidor no tiene (o que quedó con número repetido) se SUBE al
       // servidor con un número libre, conservando su nombre, categoría y unidad.
+      const antesCustom = customItems.length;
+      const eliminados = new Set((state.deletedItems || []).map(Number));
+      deletedItemNos.forEach(n => eliminados.add(Number(n)));
       customItems = customItems.filter(c => {
+        if(eliminados.has(Number(c.item_no))) return false; // eliminado a propósito: no se rescata ni se vuelve a subir
         const i = info[c.item_no];
         const igual = i && i.description && String(i.description).trim().toLowerCase() === String(c.description).trim().toLowerCase();
         if(!igual) rescatados.push(c);
         return igual;
       });
-      if(rescatados.length){ nuevosCustom = true; cambio = true; }
+      if(rescatados.length || customItems.length !== antesCustom){ nuevosCustom = true; cambio = true; }
       if(Object.keys(itemOverrides).length){ itemOverrides = {}; cambio = true; }
       reindexCatalog();
     }
