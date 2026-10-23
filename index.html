@@ -291,6 +291,86 @@ input:focus{outline:none; border-color:var(--accent);}
   background:var(--surface); border:1px dashed var(--border); border-radius:var(--radius);
   padding:12px 14px; font-size:12px; color:var(--text-muted); margin-bottom:16px; line-height:1.5;
 }
+
+/* ===== Rediseño v4 ===== */
+:root{
+  --navy:#0B2545; --navy-2:#13315C; --amber:#F2A900;
+  --bg:#F1F4F9; --border:#D3DEEB;
+  --shadow:0 1px 2px rgba(11,37,69,.06), 0 4px 14px rgba(11,37,69,.06);
+  --shadow-lg:0 10px 40px rgba(11,37,69,.28);
+}
+body{background:var(--bg);}
+.topbar{background:linear-gradient(135deg,var(--navy),var(--navy-2)); border-bottom:none; padding:12px 16px 0; box-shadow:0 2px 14px rgba(11,37,69,.28);}
+.brand h1{color:#fff; font-size:17px;}
+.brand span{color:#9FB6D3;}
+.brand-mark{background:var(--amber); color:var(--navy); width:36px; height:36px; border-radius:10px; font-size:17px;}
+.alert-pill{background:rgba(255,130,100,.16); color:#FFB9A8; border-color:rgba(255,185,168,.45);}
+.alert-pill.ok{background:rgba(60,190,120,.16); color:#8EE3B0; border-color:rgba(142,227,176,.45);}
+.tabs{margin-top:10px; gap:4px;}
+.tab{color:#9FB6D3; padding:11px 15px; font-size:13px; border-bottom-width:3px;}
+.tab:hover{color:#fff;}
+.tab.active{color:#fff; border-bottom-color:var(--amber);}
+main{max-width:980px; padding:18px 16px 100px;}
+@media(max-width:699px){
+  .tabs{display:none;}
+  .topbar{padding-bottom:12px;}
+  input[type=text],input[type=number],input[type=date],select,textarea{font-size:16px !important;}
+}
+@media(min-width:700px){
+  .bottom-nav{display:none;}
+  main{padding-bottom:48px;}
+  .toast{bottom:28px;}
+}
+.stat-card{box-shadow:var(--shadow); border-top:3px solid var(--accent); padding:14px 12px;}
+.stat-card.warn{border-top-color:var(--warn);}
+.stat-card.ok{border-top-color:var(--ok);}
+.stat-card .num{font-size:26px;}
+.section-title{display:flex; align-items:center; gap:10px;}
+.section-title::after{content:""; flex:1; height:1px; background:var(--border);}
+.quick-actions{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:0 0 6px;}
+.quick-actions .btn{flex-direction:column; gap:4px; padding:12px 6px; font-size:12.5px; box-shadow:var(--shadow);}
+.quick-actions .btn .ic{font-size:20px; line-height:1;}
+
+.item-row{box-shadow:var(--shadow); border-left:4px solid var(--border); transition:border-color .12s, transform .12s;}
+.item-row:hover{border-color:var(--accent);}
+.item-row.st-low{border-left-color:var(--warn);}
+.item-row.st-ok{border-left-color:var(--ok);}
+.item-row.st-none{border-left-color:#B8C6D6;}
+.item-info .desc{white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.3;}
+.item-stock .qty{font-size:17px;}
+.upi-badge{display:inline-block; background:#FFF4D6; color:#8A5A00; border:1px solid #F2D58A; border-radius:999px; padding:0 7px; font-size:10.5px; font-weight:600; font-family:'IBM Plex Mono',monospace; margin-left:4px;}
+.row-edit{flex:0 0 auto; width:36px; height:36px; border-radius:50%; border:1px solid var(--border); background:var(--surface-2); color:var(--accent); font-size:15px; cursor:pointer;}
+.row-edit:hover{background:var(--accent-dim);}
+@media(min-width:900px){
+  #catalogList,#lowStockList,#sinRegList{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  #catalogList .item-row,#lowStockList .item-row,#sinRegList .item-row{margin-bottom:0;}
+  #catalogList .empty-note,#lowStockList .empty-note,#sinRegList .empty-note{grid-column:1/-1;}
+  .stats-grid{gap:12px;}
+}
+.btn{min-height:42px; transition:filter .12s, transform .05s;}
+.btn:active{transform:translateY(1px);}
+.btn-primary{box-shadow:0 2px 6px rgba(11,92,171,.28);}
+.btn-primary:hover{filter:brightness(1.08);}
+input:focus,select:focus,textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(11,92,171,.15);}
+select.sel{width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px 8px; font-family:'IBM Plex Sans',sans-serif; font-size:14px;}
+.threshold-note,.manual-search,.scan-cta{box-shadow:var(--shadow); border-style:solid;}
+.catalog-toolbar{display:flex; gap:8px; margin-bottom:6px;}
+.catalog-toolbar input{flex:1;}
+.catalog-toolbar .btn{flex:0 0 auto; white-space:nowrap;}
+details.tools{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); margin:18px 0 0; padding:0 14px;}
+details.tools>summary{cursor:pointer; padding:13px 0; font-weight:600; font-size:13.5px; list-style:none; display:flex; align-items:center; gap:8px;}
+details.tools>summary::-webkit-details-marker{display:none;}
+details.tools>summary::before{content:"▸"; color:var(--accent); transition:transform .15s;}
+details.tools[open]>summary::before{transform:rotate(90deg);}
+details.tools .threshold-note{box-shadow:none;}
+.modal{border-radius:18px 18px 0 0; box-shadow:var(--shadow-lg); max-height:92vh; overflow-y:auto;}
+@media(min-width:560px){ .modal{border-radius:18px;} }
+#editorOverlay{z-index:110;}
+.editor-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.editor-grid .field{margin-bottom:0;}
+.editor-grid .full{grid-column:1/-1;}
+.btn-danger.armed{background:var(--warn); color:#fff; border-color:var(--warn);}
+.mv-info .desc{white-space:normal;}
 </style>
 </head>
 <body>
@@ -325,6 +405,12 @@ input:focus{outline:none; border-color:var(--accent);}
       <div class="stat-card"><div class="num" id="statTotal">0</div><div class="label">Materiales en catálogo</div></div>
       <div class="stat-card warn"><div class="num" id="statLow">0</div><div class="label">Bajo el mínimo</div></div>
       <div class="stat-card ok"><div class="num" id="statToday">0</div><div class="label">Movimientos hoy</div></div>
+    </div>
+
+    <div class="quick-actions">
+      <button class="btn btn-primary" data-goto="escanear"><span class="ic">▣</span>Escanear</button>
+      <button class="btn btn-secondary" data-goto="catalogo" data-new="1"><span class="ic">＋</span>Nuevo material</button>
+      <button class="btn btn-secondary" data-goto="requisicion"><span class="ic">☰</span>Requisición</button>
     </div>
 
     <div class="threshold-note" id="zeroDataNote">
@@ -403,22 +489,26 @@ input:focus{outline:none; border-color:var(--accent);}
 
   <!-- CATALOGO -->
   <section class="view" id="view-catalogo">
-    <div class="threshold-note" style="border-color:var(--accent);">
-      <b>➕ Agregar material nuevo al catálogo</b>
-      <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
-        <input type="text" id="nuevoDesc" placeholder="Nombre del material (ej. PVC Elbow 45° 1&quot;)" autocomplete="off">
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="nuevoCat" list="catExistentes" placeholder="Categoría (existente o nueva)" autocomplete="off" style="flex:2;">
-          <datalist id="catExistentes"></datalist>
-          <select id="nuevoUnit" style="flex:1; background:var(--surface-2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px 8px; font-family:'IBM Plex Sans',sans-serif; font-size:14px;">
-            <option value="ea">ea</option>
-            <option value="lf">lf</option>
-            <option value="box">box</option>
-          </select>
-        </div>
-        <button class="btn btn-primary" id="btnAgregarItem">Agregar al catálogo</button>
+    <div class="catalog-toolbar">
+      <input type="text" id="catSearch" placeholder="Buscar por nombre o número…">
+      <button class="btn btn-primary" id="btnNuevoMaterial">＋ Nuevo</button>
+    </div>
+    <datalist id="catExistentes"></datalist>
+    <div class="chip-row" id="catChips"></div>
+    <div id="catalogList"></div>
+    <div id="catalogMore"></div>
+
+    <details class="tools">
+      <summary>Herramientas de carga masiva (mínimos, cajas, unidades por instalación, conteo)</summary>
+    <div class="threshold-note">
+      <b>Cargar unidades por instalación.</b> Cuántas unidades de cada pieza se usan en <u>una</u> instalación. Formato: <span class="mono">número, unidades</span> — por ejemplo <span class="mono">45, 6</span>. Admite decimales para material por pie lineal (ej. <span class="mono">108, 12.5</span>). Se guarda en la base y alimenta la pestaña Requisición. <b>No cambia tu inventario.</b>
+      <textarea id="upiPaste" placeholder="45, 6&#10;69, 4&#10;108, 12.5" style="width:100%; min-height:70px; margin-top:10px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px 12px; font-family:'IBM Plex Mono',monospace; font-size:13px; resize:vertical;"></textarea>
+      <div style="margin-top:8px; display:flex; gap:8px;">
+        <button class="btn btn-primary" id="btnAplicarUpi">Aplicar unidades por instalación</button>
+        <button class="btn btn-secondary" id="btnUpiCsv">Subir CSV</button>
       </div>
-      <div class="hint" id="nuevoItemResultado"></div>
+      <input type="file" id="upiFile" accept=".csv,text/csv,text/plain" style="display:none;">
+      <div class="hint" id="upiResultado"></div>
     </div>
     <div class="threshold-note">
       <b>Cargar mínimos de inventario.</b> Pega la lista acordada (una pieza por línea: <span class="mono">número, mínimo</span> — por ejemplo <span class="mono">45, 20</span>) o sube un archivo CSV con esas dos columnas. Los mínimos se aplican de una vez a todo el catálogo y se suben a la base de datos.
@@ -451,11 +541,7 @@ input:focus{outline:none; border-color:var(--accent);}
       <input type="file" id="conteoFile" accept=".csv,text/csv,text/plain" style="display:none;">
       <div class="hint" id="conteoResultado"></div>
     </div>
-    <div class="search-bar">
-      <input type="text" id="catSearch" placeholder="Buscar material…">
-    </div>
-    <div class="chip-row" id="catChips"></div>
-    <div id="catalogList"></div>
+    </details>
   </section>
 
   <!-- MOVIMIENTOS -->
@@ -493,15 +579,15 @@ input:focus{outline:none; border-color:var(--accent);}
   <!-- REQUISICION -->
   <section class="view" id="view-requisicion">
     <div class="threshold-note">
-      <b>Calculadora de requisición.</b> Define cuántas unidades de cada pieza se usan por casa. La app multiplica por las casas que faltan y resta lo que ya tienes en almacén: el resultado es lo que hay que pedir.
+      <b>Calculadora de requisición.</b> Define cuántas unidades de cada pieza se usan por instalación (también puedes hacerlo desde el Catálogo, al editar una pieza). La app multiplica por las instalaciones que faltan y resta lo que ya tienes en almacén: el resultado es lo que hay que pedir. Estos datos se guardan en la base compartida y se ven igual en computadora y celulares.
       <div style="margin-top:12px;">
-        <label style="display:block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted); margin-bottom:5px;">Casas que faltan por instalar</label>
+        <label style="display:block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted); margin-bottom:5px;">Instalaciones que faltan</label>
         <input type="number" id="casasInput" min="0" placeholder="0" style="font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:600; text-align:center; max-width:160px;">
       </div>
     </div>
 
     <div class="manual-search" style="margin-bottom:14px;">
-      <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Agregar pieza a la requisición</div>
+      <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Agregar pieza (unidades por instalación)</div>
       <input type="text" id="reqSearch" placeholder="Buscar por nombre o número…" autocomplete="off">
       <div id="reqSearchResults" style="margin-top:8px;"></div>
     </div>
@@ -572,33 +658,9 @@ input:focus{outline:none; border-color:var(--accent);}
         <div class="modal-item-meta" id="mMeta">—</div>
       </div>
       <div style="display:flex; align-items:flex-start; gap:6px;">
-        <button class="x" id="mEditToggle" title="Editar este material" style="font-size:15px;">✎</button>
+        <button class="x" id="mEditToggle" title="Editar este material" style="font-size:15px;">✎ Editar</button>
         <button class="x" id="mClose">✕</button>
       </div>
-    </div>
-
-    <div id="editBox" style="display:none; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:14px;">
-      <div class="field" style="margin-bottom:10px;">
-        <label>Nombre del material</label>
-        <input type="text" id="editDesc">
-      </div>
-      <div class="field" style="margin-bottom:10px;">
-        <label>Categoría</label>
-        <input type="text" id="editCat" list="catExistentes">
-      </div>
-      <div class="field" style="margin-bottom:10px;">
-        <label>Unidad</label>
-        <select id="editUnit" style="width:100%; background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:9px 8px;">
-          <option value="ea">ea</option>
-          <option value="lf">lf</option>
-          <option value="box">box</option>
-        </select>
-      </div>
-      <div style="display:flex; gap:8px;">
-        <button class="btn btn-primary" id="btnGuardarEdicion" style="flex:1;">Guardar cambios</button>
-        <button class="btn btn-danger" id="btnEliminarItem">🗑 Eliminar material</button>
-      </div>
-      <div class="hint" id="editResultado"></div>
     </div>
 
     <div class="action-toggle">
@@ -642,6 +704,15 @@ input:focus{outline:none; border-color:var(--accent);}
     </div>
 
     <div class="field">
+      <label>Unidades por instalación: <span id="mUpiNow" class="mono">sin definir</span></label>
+      <div style="display:flex; gap:8px;">
+        <input type="number" id="upiInput" placeholder="Ej. 4 (cuántas se usan en una instalación)" min="0" step="any">
+        <button class="btn btn-secondary" id="btnSetUpi">Guardar</button>
+      </div>
+      <div class="hint">Alimenta la pestaña Requisición. Guardarlo no cambia tu inventario.</div>
+    </div>
+
+    <div class="field">
       <label>Unidades por caja: <span id="mCajaNow" class="mono">sin definir</span></label>
       <div style="display:flex; gap:8px;">
         <input type="number" id="cajaInput" placeholder="Ej. 25 (si este material se pide por caja)" min="1">
@@ -654,6 +725,59 @@ input:focus{outline:none; border-color:var(--accent);}
       <button class="btn btn-secondary" id="mCancel" style="flex:1;">Cancelar</button>
       <button class="btn btn-primary" id="mConfirm" style="flex:2;">Registrar</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="editorOverlay">
+  <div class="modal editor">
+    <div class="modal-head">
+      <div>
+        <div class="modal-item-code" id="edCode">—</div>
+        <div class="modal-item-desc" id="edTitle">Editar material</div>
+      </div>
+      <button class="x" id="edClose">✕</button>
+    </div>
+    <div class="editor-grid" style="margin-top:12px;">
+      <div class="field full">
+        <label>Nombre del material</label>
+        <input type="text" id="edDesc" autocomplete="off" placeholder='ej. PVC Elbow 45° 1"'>
+      </div>
+      <div class="field">
+        <label>Categoría</label>
+        <input type="text" id="edCat" list="catExistentes" autocomplete="off" placeholder="Existente o nueva">
+      </div>
+      <div class="field">
+        <label>Unidad</label>
+        <select id="edUnit" class="sel">
+          <option value="ea">ea (unidad)</option>
+          <option value="lf">lf (pie lineal)</option>
+          <option value="box">box (caja)</option>
+          <option value="pk">pk (paquete)</option>
+          <option value="roll">roll (rollo)</option>
+          <option value="gal">gal (galón)</option>
+          <option value="set">set (juego)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Unidades por instalación</label>
+        <input type="number" id="edUpi" min="0" step="any" placeholder="sin definir">
+      </div>
+      <div class="field">
+        <label>Mínimo de reabasto</label>
+        <input type="number" id="edMin" min="0" placeholder="vacío = sin mínimo">
+      </div>
+      <div class="field full">
+        <label>Unidades por caja (si se pide por caja)</label>
+        <input type="number" id="edCaja" min="1" placeholder="vacío = no aplica">
+      </div>
+    </div>
+    <div class="hint" id="edResultado" style="min-height:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="edDelete">🗑 Eliminar</button>
+      <button class="btn btn-secondary" id="edCancel" style="flex:1;">Cancelar</button>
+      <button class="btn btn-primary" id="edSave" style="flex:2;">Guardar</button>
+    </div>
+    <div class="hint" id="edNote">El stock actual nunca se modifica desde aquí. Eliminar un material no borra su historial.</div>
   </div>
 </div>
 
@@ -861,22 +985,26 @@ input:focus{outline:none; border-color:var(--accent);}
     }
   }
 
-  function itemRow(it, highlightLow){
+  function itemRow(it, highlightLow, opts){
     const s = getStock(it.item_no);
     const row = document.createElement('div');
-    row.className = 'item-row';
     const isLow = s.threshold!==null && s.threshold!==undefined && s.qty <= s.threshold;
+    row.className = 'item-row ' + (isLow ? 'st-low' : (s.qty > 0 ? 'st-ok' : 'st-none'));
+    const upi = porCasa[it.item_no];
+    const upiHtml = upi ? ` <span class="upi-badge" title="Unidades por instalación">${upi}/inst.</span>` : '';
     row.innerHTML = `
       <div class="item-code mono">#${it.item_no}</div>
       <div class="item-info">
         <div class="desc">${escapeHtml(it.description)}</div>
-        <div class="cat">${escapeHtml(it.category)}</div>
+        <div class="cat">${escapeHtml(it.category)}${upiHtml}</div>
       </div>
       <div class="item-stock">
         <div class="qty ${isLow?'low':''}">${s.qty}</div>
         <div class="unit">${it.unit}</div>
-      </div>`;
+      </div>` + ((opts && opts.edit) ? '<button class="row-edit" title="Editar material" aria-label="Editar material">✎</button>' : '');
     row.addEventListener('click', ()=> openModal(it));
+    const eb = row.querySelector('.row-edit');
+    if(eb) eb.addEventListener('click', (e)=>{ e.stopPropagation(); openEditor(it); });
     return row;
   }
 
@@ -939,13 +1067,13 @@ input:focus{outline:none; border-color:var(--accent);}
     const all = document.createElement('div');
     all.className = 'chip' + (activeCatFilter==='todas' ? ' active' : '');
     all.textContent = 'Todas';
-    all.onclick = ()=>{ activeCatFilter='todas'; renderCatChips(); renderCatalog(); };
+    all.onclick = ()=>{ activeCatFilter='todas'; renderCatChips(); renderCatalog(true); };
     box.appendChild(all);
     CATEGORIES.forEach(c => {
       const chip = document.createElement('div');
       chip.className = 'chip' + (activeCatFilter===c ? ' active' : '');
       chip.textContent = c;
-      chip.onclick = ()=>{ activeCatFilter=c; renderCatChips(); renderCatalog(); };
+      chip.onclick = ()=>{ activeCatFilter=c; renderCatChips(); renderCatalog(true); };
       box.appendChild(chip);
     });
     const dl = $('#catExistentes');
@@ -959,10 +1087,14 @@ input:focus{outline:none; border-color:var(--accent);}
     }
   }
 
-  function renderCatalog(){
+  let catLimit = 120;
+  function renderCatalog(resetLimit){
+    if(resetLimit === true) catLimit = 120;
     const q = ($('#catSearch').value || '').toLowerCase().trim();
     const box = $('#catalogList');
+    const more = $('#catalogMore');
     box.innerHTML = '';
+    more.innerHTML = '';
     let list = CATALOG;
     if(activeCatFilter!=='todas') list = list.filter(i => i.category===activeCatFilter);
     if(q) list = list.filter(i => i.description.toLowerCase().includes(q) || String(i.item_no).includes(q));
@@ -970,16 +1102,18 @@ input:focus{outline:none; border-color:var(--accent);}
       box.innerHTML = '<div class="empty-note">Sin resultados.</div>';
       return;
     }
-    list.slice(0,150).forEach(it => box.appendChild(itemRow(it)));
-    if(list.length>150){
-      const more = document.createElement('div');
-      more.className='empty-note';
-      more.textContent = `Mostrando 150 de ${list.length} — refina tu búsqueda.`;
-      box.appendChild(more);
+    list.slice(0,catLimit).forEach(it => box.appendChild(itemRow(it, false, {edit:true})));
+    if(list.length>catLimit){
+      const b = document.createElement('button');
+      b.className = 'btn btn-secondary btn-block';
+      b.style.marginTop = '10px';
+      b.textContent = `Mostrando ${catLimit} de ${list.length} — mostrar más`;
+      b.onclick = ()=>{ catLimit += 200; renderCatalog(); };
+      more.appendChild(b);
     }
   }
   function debounce(fn, ms){ let t; return function(){ const a=arguments, c=this; clearTimeout(t); t=setTimeout(()=>fn.apply(c,a), ms); }; }
-  $('#catSearch').addEventListener('input', debounce(renderCatalog, 150));
+  $('#catSearch').addEventListener('input', debounce(()=>renderCatalog(true), 150));
 
   // ---------- render: movimientos ----------
   function renderMovements(){
@@ -1062,6 +1196,7 @@ input:focus{outline:none; border-color:var(--accent);}
     renderCatChips();
     renderCatalog();
     renderMovements();
+    renderRequisicion();
   }
 
   // ---------- modal ----------
@@ -1101,11 +1236,7 @@ input:focus{outline:none; border-color:var(--accent);}
     $('#cajaToggle').checked = false;
     actualizarCajaPreview();
     setModalMode('salida');
-    $('#editBox').style.display = 'none';
-    $('#editResultado').textContent = '';
-    $('#editDesc').value = it.description;
-    $('#editCat').value = it.category;
-    $('#editUnit').value = it.unit;
+    fillModalUpi(it);
     $('#modalOverlay').classList.add('show');
   }
   function closeModal(){
@@ -1126,56 +1257,190 @@ input:focus{outline:none; border-color:var(--accent);}
   $('#mClose').onclick = ()=>{ quickChainMode=false; closeModal(); };
   $('#mCancel').onclick = ()=>{ quickChainMode=false; closeModal(); };
 
-  $('#mEditToggle').onclick = ()=>{
-    const box = $('#editBox');
-    box.style.display = box.style.display==='none' ? 'block' : 'none';
-  };
-
-  $('#btnGuardarEdicion').onclick = async ()=>{
+  function fillModalUpi(it){
+    const u = porCasa[it.item_no];
+    $('#mUpiNow').textContent = u ? (u + ' ' + it.unit + '/instalación') : 'sin definir';
+    $('#upiInput').value = u || '';
+  }
+  function refreshModalHeader(){
     if(!currentModalItem) return;
-    const btn = $('#btnGuardarEdicion');
-    const res = $('#editResultado');
-    btn.disabled = true;
-    const r = await editarItemCatalogo(currentModalItem.item_no, {
-      description: $('#editDesc').value,
-      category: $('#editCat').value,
-      unit: $('#editUnit').value
-    });
-    btn.disabled = false;
-    if(!r.ok){
-      res.style.color = 'var(--warn)';
-      res.textContent = '⚠ ' + r.error;
-      return;
-    }
-    currentModalItem = byNo[currentModalItem.item_no]; // refleja el ítem ya actualizado
-    $('#mDesc').textContent = currentModalItem.description;
-    $('#mMeta').textContent = currentModalItem.category + ' · unidad: ' + currentModalItem.unit;
-    res.style.color = 'var(--ok)';
-    res.textContent = '✓ Guardado.';
-    renderCatChips();
-    renderCatalog();
-    renderLabelChips();
-    showToast('Material actualizado ✓');
-  };
-
-  $('#btnEliminarItem').onclick = async ()=>{
-    if(!currentModalItem) return;
-    const it = currentModalItem;
+    const it = byNo[currentModalItem.item_no];
+    if(!it) { closeModal(); return; }
+    currentModalItem = it;
     const s = getStock(it.item_no);
-    const advertencia = s.qty > 0
-      ? `Este material todavía tiene ${s.qty} ${it.unit} en el sistema. `
-      : '';
-    if(!confirm(advertencia + `¿Eliminar "${it.description}" (#${it.item_no}) del catálogo? Su historial de movimientos NO se borra, solo dejará de aparecer en el catálogo activo. Esta acción no se puede deshacer desde la app.`)){
+    $('#mDesc').textContent = it.description;
+    $('#mMeta').textContent = it.category + ' · unidad: ' + it.unit;
+    $('#qtyUnit').textContent = it.unit;
+    $('#mThreshNow').textContent = (s.threshold===null || s.threshold===undefined) ? 'sin definir' : s.threshold;
+    $('#threshInput').value = (s.threshold===null || s.threshold===undefined) ? '' : s.threshold;
+    $('#mCajaNow').textContent = s.packSize ? (s.packSize + ' ' + it.unit + '/caja') : 'sin definir';
+    $('#cajaInput').value = s.packSize || '';
+    fillModalUpi(it);
+    actualizarCajaPreview();
+  }
+
+  // ---------- unidades por instalación (sincronizadas con la base) ----------
+  function limpiarUpi(v){
+    const n = parseFloat(String(v).replace(',', '.'));
+    if(isNaN(n) || n <= 0) return 0;
+    return Math.round(n * 100) / 100;
+  }
+  async function setPerHouse(no, v){
+    v = limpiarUpi(v);
+    if(v === 0){ delete porCasa[no]; } else { porCasa[no] = v; }
+    await guardarRequisicion();
+    const it = byNo[no];
+    await enqueue({ action:'perhouse', itemNo: no, perHouse: v > 0 ? v : null,
+      description: it ? it.description : undefined, category: it ? it.category : undefined, unit: it ? it.unit : undefined });
+  }
+  $('#btnSetUpi').onclick = async ()=>{
+    if(!currentModalItem) return;
+    await setPerHouse(currentModalItem.item_no, $('#upiInput').value);
+    fillModalUpi(currentModalItem);
+    renderAll();
+    showToast('Unidades por instalación guardadas');
+  };
+
+  // ---------- editor de catálogo (agregar / editar / eliminar) ----------
+  let editorItem = null;      // null = material nuevo
+  let delArmTimer = null;
+  function disarmDelete(){
+    clearTimeout(delArmTimer);
+    const b = $('#edDelete');
+    b.classList.remove('armed');
+    b.textContent = '🗑 Eliminar';
+  }
+  function openEditor(it){
+    editorItem = it || null;
+    disarmDelete();
+    const s = it ? getStock(it.item_no) : null;
+    $('#edTitle').textContent = it ? 'Editar material' : 'Nuevo material';
+    $('#edCode').textContent = it ? 'CEWRI-' + it.item_no : 'Recibirá el siguiente número libre';
+    $('#edDesc').value = it ? it.description : '';
+    $('#edCat').value = it ? it.category : (activeCatFilter !== 'todas' ? activeCatFilter : '');
+    const unitSel = $('#edUnit');
+    const u = it ? it.unit : 'ea';
+    if(![...unitSel.options].some(o => o.value === u)){
+      const o = document.createElement('option'); o.value = u; o.textContent = u; unitSel.appendChild(o);
+    }
+    unitSel.value = u;
+    $('#edUpi').value = it && porCasa[it.item_no] ? porCasa[it.item_no] : '';
+    $('#edMin').value = s && s.threshold !== null && s.threshold !== undefined ? s.threshold : '';
+    $('#edCaja').value = s && s.packSize ? s.packSize : '';
+    $('#edResultado').textContent = '';
+    $('#edDelete').style.display = it ? '' : 'none';
+    $('#editorOverlay').classList.add('show');
+    if(!it) setTimeout(()=>$('#edDesc').focus(), 60);
+  }
+  function closeEditor(){
+    disarmDelete();
+    $('#editorOverlay').classList.remove('show');
+    editorItem = null;
+  }
+  function refrescarTodoTrasEdicion(){
+    renderCatChips();
+    renderAll();
+    renderLabelChips();
+    refreshModalHeader();
+  }
+  // aplica unidades por instalación / mínimo / caja SOLO si cambiaron (nunca toca la cantidad en stock)
+  async function aplicarExtrasEditor(no, it){
+    const upiNuevo = limpiarUpi($('#edUpi').value);
+    if(upiNuevo !== (Number(porCasa[no]) || 0)) await setPerHouse(no, upiNuevo);
+
+    const s0 = getStock(no);
+    const minTxt = $('#edMin').value.trim();
+    const minNuevo = minTxt === '' ? null : Math.max(0, parseInt(minTxt) || 0);
+    const minActual = (s0.threshold === undefined) ? null : s0.threshold;
+    if(minNuevo !== minActual){
+      if(!stock[no]) stock[no] = { qty:0, threshold:null, packSize:null };
+      stock[no].threshold = minNuevo;
+      await saveStock();
+      await enqueue({ action:'threshold', itemNo: no, description: it.description, threshold: minNuevo });
+    }
+    const cajaTxt = $('#edCaja').value.trim();
+    const cajaNuevo = cajaTxt === '' ? null : Math.max(1, parseInt(cajaTxt) || 1);
+    const cajaActual = s0.packSize || null;
+    if(cajaNuevo !== cajaActual){
+      if(!stock[no]) stock[no] = { qty:0, threshold:null, packSize:null };
+      stock[no].packSize = cajaNuevo;
+      await saveStock();
+      await enqueue({ action:'packsize', itemNo: no, description: it.description, packSize: cajaNuevo });
+    }
+  }
+  $('#edSave').onclick = async ()=>{
+    const btn = $('#edSave');
+    const res = $('#edResultado');
+    const desc = $('#edDesc').value, cat = $('#edCat').value, unit = $('#edUnit').value;
+    btn.disabled = true;
+    try{
+      let no, it;
+      if(editorItem){
+        no = editorItem.item_no;
+        const d = desc.trim(), c = cat.trim();
+        if(d !== editorItem.description || c !== editorItem.category || unit !== editorItem.unit){
+          const r = await editarItemCatalogo(no, { description: desc, category: cat, unit });
+          if(!r.ok){ res.style.color = 'var(--warn)'; res.textContent = '⚠ ' + r.error; return; }
+        }
+        it = byNo[no];
+      } else {
+        const r = await agregarItemCatalogo({ description: desc, category: cat, unit });
+        if(!r.ok){ res.style.color = 'var(--warn)'; res.textContent = '⚠ ' + r.error; return; }
+        it = byNo[r.item.item_no] || r.item;
+        no = it.item_no;
+      }
+      await aplicarExtrasEditor(no, it);
+      const eraNuevo = !editorItem;
+      closeEditor();
+      refrescarTodoTrasEdicion();
+      showToast(eraNuevo ? 'Material agregado como #' + no + ' ✓' : 'Material actualizado ✓');
+    } finally {
+      btn.disabled = false;
+    }
+  };
+  $('#edDelete').onclick = async ()=>{
+    if(!editorItem) return;
+    const btn = $('#edDelete');
+    if(!btn.classList.contains('armed')){
+      const s = getStock(editorItem.item_no);
+      btn.classList.add('armed');
+      btn.textContent = 'Toca otra vez para confirmar';
+      const res = $('#edResultado');
+      res.style.color = 'var(--warn)';
+      res.textContent = (s.qty > 0 ? `Todavía tiene ${s.qty} ${editorItem.unit} en el sistema. ` : '') +
+        'Se quita del catálogo activo; su historial de movimientos NO se borra.';
+      clearTimeout(delArmTimer);
+      delArmTimer = setTimeout(disarmDelete, 5000);
       return;
     }
-    await eliminarItemCatalogo(it.item_no);
-    closeModal();
-    renderCatChips();
-    renderCatalog();
-    renderLabelChips();
-    renderAll();
+    const no = editorItem.item_no;
+    await eliminarItemCatalogo(no);
+    if(currentModalItem && currentModalItem.item_no === no) closeModal();
+    closeEditor();
+    refrescarTodoTrasEdicion();
     showToast('Material eliminado del catálogo ✓');
   };
+  $('#edClose').onclick = closeEditor;
+  $('#edCancel').onclick = closeEditor;
+  $('#mEditToggle').onclick = ()=>{ if(currentModalItem) openEditor(currentModalItem); };
+  $('#btnNuevoMaterial').onclick = ()=> openEditor(null);
+  $('#editorOverlay').addEventListener('click', e=>{ if(e.target === $('#editorOverlay')) closeEditor(); });
+  $('#editorOverlay').addEventListener('keydown', e=>{
+    if(e.key === 'Enter' && e.target.tagName === 'INPUT'){ e.preventDefault(); $('#edSave').click(); }
+  });
+  document.addEventListener('keydown', e=>{
+    if(e.key !== 'Escape') return;
+    if($('#editorOverlay').classList.contains('show')) closeEditor();
+    else if($('#modalOverlay').classList.contains('show')){ quickChainMode=false; closeModal(); }
+  });
+
+  // acciones rápidas del Resumen
+  $$('[data-goto]').forEach(b => b.addEventListener('click', ()=>{
+    setTab(b.dataset.goto);
+    if(b.dataset.new) openEditor(null);
+    window.scrollTo(0,0);
+  }));
+
   $('#qtyMinus').onclick = ()=>{ const i=$('#qtyInput'); i.value = Math.max(1, (parseInt(i.value)||1)-1); };
   $('#qtyPlus').onclick = ()=>{ const i=$('#qtyInput'); i.value = (parseInt(i.value)||1)+1; };
 
@@ -1484,6 +1749,7 @@ input:focus{outline:none; border-color:var(--accent);}
     const it = customItems.find(c => c.item_no === oldNo);
     if(it) it.item_no = newNo;
     if(stock[oldNo]){ stock[newNo] = stock[oldNo]; delete stock[oldNo]; }
+    if(porCasa[oldNo] !== undefined){ porCasa[newNo] = porCasa[oldNo]; delete porCasa[oldNo]; await guardarRequisicion(); }
     movements.forEach(m => { if(m.itemNo === oldNo) m.itemNo = newNo; });
     outbox.forEach(o => {
       if(o.itemNo === oldNo) o.itemNo = newNo;
@@ -1496,6 +1762,8 @@ input:focus{outline:none; border-color:var(--accent);}
     showToast('Material renumerado: #' + oldNo + ' → #' + newNo);
   }
   let flushing = false;
+  let backendDesactualizado = false;
+  const NUEVAS_ACCIONES = new Set(['perhouse','perhouses','setcasas']);
   async function flushOutbox(){
     if(flushing || !backendUrl || outbox.length===0) return;
     flushing = true;
@@ -1508,6 +1776,13 @@ input:focus{outline:none; border-color:var(--accent);}
             setSyncStatus('⚠ Clave de acceso incorrecta — ' + outbox.length + ' registro(s) en cola. Corrige la clave y toca Conectar.', 'var(--warn)');
             return; // no seguir reintentando hasta que corrijan la clave
           }
+          if(res && res.error === 'accion desconocida' && NUEVAS_ACCIONES.has(op.action)){
+            // Code.gs aún no se actualizó en Google: se descarta este envío (queda guardado en el dispositivo) para no bloquear la cola
+            backendDesactualizado = true;
+            outbox.shift();
+            await saveOutbox();
+            continue;
+          }
           throw new Error(res && res.error ? res.error : 'respuesta inválida');
         }
         if(op.action==='newitem' && res.itemNo && parseInt(res.itemNo)!==parseInt(op.itemNo)){
@@ -1517,7 +1792,11 @@ input:focus{outline:none; border-color:var(--accent);}
         outbox.shift();
         await saveOutbox();
       }
-      setSyncStatus('✓ Conectado y sincronizado — ' + new Date().toLocaleTimeString('es-PR', {hour:'2-digit', minute:'2-digit'}), 'var(--ok)');
+      if(backendDesactualizado){
+        setSyncStatus('⚠ Conectado, pero el script de Google (Code.gs) está desactualizado: las unidades por instalación se guardan solo en este dispositivo. Pega el Code.gs nuevo y crea una nueva implementación.', 'var(--warn)');
+      } else {
+        setSyncStatus('✓ Conectado y sincronizado — ' + new Date().toLocaleTimeString('es-PR', {hour:'2-digit', minute:'2-digit'}), 'var(--ok)');
+      }
     }catch(e){
       console.error('sync error', e);
       setSyncStatus('⚠ Sin conexión con la base — ' + outbox.length + ' registro(s) en cola, se reintentará', 'var(--warn)');
@@ -1609,6 +1888,37 @@ input:focus{outline:none; border-color:var(--accent);}
     return cambio;
   }
 
+  // Unidades por instalación y número de instalaciones restantes: la primera vez que un dispositivo
+  // se conecta a un servidor actualizado, sus valores locales que el servidor no tiene se SUBEN (nada se pierde);
+  // desde entonces el servidor es la fuente de verdad.
+  async function mergePerHouseFromServer(state){
+    if(!state || state.perHouse === undefined) return; // servidor sin actualizar
+    backendDesactualizado = false;
+    const srv = state.perHouse || {};
+    const migrado = (await store.get('cewri-ph-migrated')) === '1';
+    if(!migrado){
+      const subir = [];
+      Object.keys(porCasa).forEach(k => {
+        const v = Number(porCasa[k]);
+        if(v > 0 && srv[k] === undefined) subir.push({ itemNo: parseInt(k), perHouse: v });
+      });
+      porCasa = Object.assign({}, porCasa, srv);
+      if(subir.length) outbox.push({ action:'perhouses', items: subir });
+      if(state.casasRestantes === null || state.casasRestantes === undefined){
+        if(casasRestantes > 0) outbox.push({ action:'setcasas', value: casasRestantes });
+      } else {
+        casasRestantes = Number(state.casasRestantes) || 0;
+      }
+      await saveOutbox();
+      await store.set('cewri-ph-migrated', '1');
+    } else {
+      porCasa = srv;
+      if(state.casasRestantes !== null && state.casasRestantes !== undefined) casasRestantes = Number(state.casasRestantes) || 0;
+    }
+    await guardarRequisicion();
+    $('#casasInput').value = casasRestantes || '';
+  }
+
   async function connectBackend(url, key, opts){
     const pull = !opts || opts.pull !== false;
     backendUrl = (url || '').trim();
@@ -1646,6 +1956,7 @@ input:focus{outline:none; border-color:var(--accent);}
         await store.set('cewri-movements', JSON.stringify(movements));
         // fusionar ítems nuevos, ediciones y eliminaciones hechas desde otros dispositivos
         await mergeServerCatalog(state, { purgar: true });
+        await mergePerHouseFromServer(state);
         if(outbox.length>0) flushOutbox();
         renderAll();
       }
@@ -2005,8 +2316,8 @@ input:focus{outline:none; border-color:var(--accent);}
       const upc = Number(porCasa[noStr]) || 0;
       if(!it || upc <= 0) return;
       const s = getStock(no);
-      const necesario = upc * casasRestantes;
-      const aPedir = Math.max(0, necesario - s.qty);
+      const necesario = Math.round(upc * casasRestantes * 100) / 100;
+      const aPedir = Math.ceil(Math.max(0, necesario - s.qty) - 1e-9);
       filas.push({ it, upc, necesario, stock: s.qty, aPedir });
     });
     filas.sort((a,b) => b.aPedir - a.aPedir || a.it.item_no - b.it.item_no);
@@ -2019,7 +2330,7 @@ input:focus{outline:none; border-color:var(--accent);}
     const box = $('#reqList');
     box.innerHTML = '';
     if(filas.length === 0){
-      box.innerHTML = '<div class="empty-note">Busca piezas arriba y agrégalas con sus unidades por casa.</div>';
+      box.innerHTML = '<div class="empty-note">Busca piezas arriba y agrégalas con sus unidades por instalación.</div>';
       $('#btnReqCsv').style.display = 'none';
       return;
     }
@@ -2035,7 +2346,7 @@ input:focus{outline:none; border-color:var(--accent);}
           <div class="cat">necesita ${f.necesario} · hay ${f.stock} ${f.it.unit}</div>
         </div>
         <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
-          <input type="number" min="0" value="${f.upc}" data-no="${f.it.item_no}" class="req-upc" style="width:64px; text-align:center; font-family:'IBM Plex Mono',monospace; font-weight:600;" title="Unidades por casa">
+          <input type="number" min="0" value="${f.upc}" data-no="${f.it.item_no}" class="req-upc" step="any" style="width:72px; text-align:center; font-family:'IBM Plex Mono',monospace; font-weight:600;" title="Unidades por instalación">
           <div style="text-align:right; min-width:74px;">
             <div class="mono" style="font-weight:700; font-size:15px; color:${pedirColor};">${f.aPedir}</div>
             <div style="font-size:10px; color:var(--text-muted);">a pedir</div>
@@ -2046,27 +2357,25 @@ input:focus{outline:none; border-color:var(--accent);}
     });
     box.querySelectorAll('.req-upc').forEach(inp => {
       inp.addEventListener('change', async function(){
-        const no = this.dataset.no;
-        const v = Math.max(0, parseInt(this.value) || 0);
-        if(v === 0){ delete porCasa[no]; } else { porCasa[no] = v; }
-        await guardarRequisicion();
-        renderRequisicion();
+        await setPerHouse(parseInt(this.dataset.no), this.value);
+        renderAll();
       });
     });
     box.querySelectorAll('[data-remove]').forEach(btn => {
       btn.addEventListener('click', async function(){
-        delete porCasa[this.dataset.remove];
-        await guardarRequisicion();
-        renderRequisicion();
+        await setPerHouse(parseInt(this.dataset.remove), 0);
+        renderAll();
       });
     });
     $('#btnReqCsv').style.display = 'block';
   }
 
+  const enviarCasas = debounce(()=>{ enqueue({ action:'setcasas', value: casasRestantes }); }, 700);
   $('#casasInput').addEventListener('input', async function(){
     casasRestantes = Math.max(0, parseInt(this.value) || 0);
     await guardarRequisicion();
     renderRequisicion();
+    enviarCasas();
   });
 
   $('#reqSearch').addEventListener('input', function(){
@@ -2081,11 +2390,10 @@ input:focus{outline:none; border-color:var(--accent);}
       const row = itemRow(it);
       row.addEventListener('click', async (e)=>{
         e.stopImmediatePropagation();
-        porCasa[it.item_no] = 1; // arranca en 1, editable en la lista
-        await guardarRequisicion();
+        await setPerHouse(it.item_no, 1); // arranca en 1, editable en la lista
         $('#reqSearch').value = '';
         box.innerHTML = '';
-        renderRequisicion();
+        renderAll();
       }, true);
       box.appendChild(row);
     });
@@ -2094,7 +2402,7 @@ input:focus{outline:none; border-color:var(--accent);}
   $('#btnReqCsv').onclick = ()=>{
     const filas = calcularRequisicion();
     if(!filas.length) return;
-    const enc = 'numero,descripcion,unidad,unidades_por_casa,casas_restantes,necesario,stock_actual,a_pedir';
+    const enc = 'numero,descripcion,unidad,unidades_por_instalacion,instalaciones_restantes,necesario,stock_actual,a_pedir';
     const lineas = filas.map(f =>
       [f.it.item_no, '"'+f.it.description.replace(/"/g,'""')+'"', f.it.unit, f.upc, casasRestantes, f.necesario, f.stock, f.aPedir].join(',')
     );
@@ -2107,6 +2415,42 @@ input:focus{outline:none; border-color:var(--accent);}
     setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
     showToast('Requisición descargada ✓');
   };
+
+  // ---------- carga masiva de unidades por instalación ----------
+  async function aplicarUpiMasivo(texto){
+    const lineas = String(texto || '').split(/\r?\n/).map(l => l.trim()).filter(l => l);
+    const fallidas = [], lote = [];
+    lineas.forEach(linea => {
+      const mm = linea.match(/^(.*)[,;\t]\s*(\d+(?:[.,]\d+)?)\s*$/);
+      if(!mm){ fallidas.push(linea); return; }
+      const it = resolveItem(mm[1].trim().replace(/[,;]+$/, ''));
+      const n = parseFloat(mm[2].replace(',', '.'));
+      if(!it || isNaN(n) || n < 0){ fallidas.push(linea); return; }
+      lote.push({ it, v: limpiarUpi(n) });
+    });
+    lote.forEach(x => { if(x.v === 0) delete porCasa[x.it.item_no]; else porCasa[x.it.item_no] = x.v; });
+    await guardarRequisicion();
+    if(lote.length) await enqueue({ action:'perhouses', items: lote.map(x => ({ itemNo: x.it.item_no, perHouse: x.v })) });
+    renderAll();
+    const res = $('#upiResultado');
+    let msg = '✓ ' + lote.length + ' pieza(s) con unidades por instalación aplicada(s). Tu inventario no cambió.';
+    if(lote.length && !backendUrl) msg += ' (Sin base conectada: quedaron solo en este dispositivo.)';
+    if(fallidas.length){
+      msg += ' ⚠ ' + fallidas.length + ' línea(s) no reconocida(s): ' + fallidas.slice(0,3).join(' | ') + (fallidas.length>3 ? '…' : '');
+      res.style.color = 'var(--warn)';
+    } else res.style.color = 'var(--ok)';
+    res.textContent = msg;
+  }
+  $('#btnAplicarUpi').onclick = ()=> aplicarUpiMasivo($('#upiPaste').value);
+  $('#btnUpiCsv').onclick = ()=> $('#upiFile').click();
+  $('#upiFile').addEventListener('change', function(){
+    const file = this.files && this.files[0];
+    this.value = '';
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=> aplicarUpiMasivo(reader.result);
+    reader.readAsText(file);
+  });
 
   // ---------- ítems agregados, editados o eliminados desde la página ----------
   let customItems = [];
@@ -2202,40 +2546,17 @@ input:focus{outline:none; border-color:var(--accent);}
     return { ok:true };
   }
 
-  $('#btnAgregarItem').onclick = async ()=>{
-    const btn = $('#btnAgregarItem');
-    const res = $('#nuevoItemResultado');
-    btn.disabled = true;
-    const r = await agregarItemCatalogo({
-      description: $('#nuevoDesc').value,
-      category: $('#nuevoCat').value,
-      unit: $('#nuevoUnit').value
-    });
-    btn.disabled = false;
-    if(!r.ok){
-      res.style.color = 'var(--warn)';
-      res.textContent = '⚠ ' + r.error;
-      return;
-    }
-    res.style.color = 'var(--ok)';
-    res.textContent = '✓ Agregado como #' + r.item.item_no + ' — ' + r.item.description;
-    $('#nuevoDesc').value = '';
-    $('#nuevoCat').value = '';
-    renderCatChips();
-    renderCatalog();
-    renderLabelChips();
-    showToast('Material agregado ✓');
-  };
-
   // ---------- respaldo exportar/importar ----------
   $('#btnExport').onclick = ()=>{
     const payload = {
       app: 'inventario-cewri',
-      version: 3,
+      version: 4,
       exported: new Date().toISOString(),
       stock, movements,
-      porCasa, casasRestantes,
-      customItems
+      porCasa, casasRestantes,   // porCasa = unidades por instalación
+      customItems,
+      itemOverrides,
+      deletedItemNos: [...deletedItemNos]
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
     const a = document.createElement('a');
@@ -2264,7 +2585,8 @@ input:focus{outline:none; border-color:var(--accent);}
         if(hasCurrent && !confirm('Ya hay datos en esta sesión. ¿Reemplazarlos con el respaldo?')) return;
         stock = data.stock;
         movements = data.movements;
-        if(data.porCasa){ porCasa = data.porCasa; }
+        // un respaldo viejo trae porCasa vacío: en ese caso se CONSERVAN las unidades por instalación actuales
+        if(data.porCasa && Object.keys(data.porCasa).length > 0){ porCasa = data.porCasa; }
         if(data.casasRestantes !== undefined){ casasRestantes = parseInt(data.casasRestantes) || 0; $('#casasInput').value = casasRestantes || ''; }
         if(Array.isArray(data.customItems)){
           // reconstruye el catálogo: base original (sin los custom viejos) + los del respaldo
@@ -2274,11 +2596,14 @@ input:focus{outline:none; border-color:var(--accent);}
           reindexCatalog();
           await guardarItemsPersonalizados();
         }
+        if(data.itemOverrides && typeof data.itemOverrides === 'object'){ itemOverrides = data.itemOverrides; await guardarOverrides(); }
+        if(Array.isArray(data.deletedItemNos)){ deletedItemNos = new Set(data.deletedItemNos); await guardarEliminados(); }
+        reindexCatalog();
         await guardarRequisicion();
         await saveStock();
         await saveMovements();
         if(backendUrl){
-          await enqueue({ action:'bulk', stock, movements, catalog: CATALOG });
+          await enqueue({ action:'bulk', stock, movements, catalog: CATALOG, perHouse: porCasa, casasRestantes });
         }
         renderAll();
         showToast('Respaldo restaurado ✓');
